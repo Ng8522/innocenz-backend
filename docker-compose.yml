@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: innocenz-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: innocenz
+      POSTGRES_PASSWORD: innocenz
+      POSTGRES_DB: innocenz
+    ports:
+      - '5432:5432'
+    volumes:
+      - innocenz_pg_data:/var/lib/postgresql/data
+
+volumes:
+  innocenz_pg_data:
