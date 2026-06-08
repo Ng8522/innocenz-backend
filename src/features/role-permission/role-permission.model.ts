@@ -12,3 +12,6 @@ export const RolePermissionTable = MainSchema.table('role_permission', {
     createdBy: varchar('created_by').notNull(),
     updatedBy: varchar('updated_by').notNull(),
 });
+
+export type RolePermissionType = typeof RolePermissionTable.$inferSelect;
+export type RolePermissionInsertType = typeof RolePermissionTable.$inferInsert;

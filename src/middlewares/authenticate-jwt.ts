@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { jwtController } from '@/composition-root.js';
+import { authRepository } from '@/composition-root.js';
 import { Error } from '@/error/index.js';
 
 const authenticateJWT = async (req: Request, res: Response, next: NextFunction) => {
@@ -10,7 +10,11 @@ const authenticateJWT = async (req: Request, res: Response, next: NextFunction) 
   }
 
   try {
-    jwtController.verifyToken(token);
+    const admin = await authRepository.getUserDataByToken(token);
+    if (!admin || admin.status !== 'active') {
+      return res.status(401).json({ message: Error.UNAUTHORIZED });
+    }
+    req.admin = admin;
     next();
   } catch {
     return res.status(401).json({ message: Error.UNAUTHORIZED });

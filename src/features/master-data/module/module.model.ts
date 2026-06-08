@@ -10,3 +10,6 @@ export const ModuleTable = MainSchema.table('m_module', {
     createdBy: varchar('created_by').notNull(),
     updatedBy: varchar('updated_by').notNull(),
 });
+
+export type ModuleType = typeof ModuleTable.$inferSelect;
+export type ModuleInsertType = typeof ModuleTable.$inferInsert;

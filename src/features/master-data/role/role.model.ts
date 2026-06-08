@@ -10,3 +10,6 @@ export const RoleTable = MainSchema.table('role', {
     createdBy: varchar('created_by').notNull(),
     updatedBy: varchar('updated_by').notNull(),
 });
+
+export type RoleType = typeof RoleTable.$inferSelect;
+export type RoleInsertType = typeof RoleTable.$inferInsert;

@@ -18,6 +18,7 @@ import { requestLoggerMiddleware } from './middlewares/request-logger';
 import { env } from './env';
 import { logger } from './util/logger';
 import { initAdmin } from './scripts/init-admin';
+import { initRoles } from './scripts/init-roles';
 
 const app = express();
 
@@ -193,7 +194,8 @@ server.listen(Number(PORT), async () => {
 
   try {
     await initAdmin();
+    await initRoles();
   } catch (error) {
-    logger.error('Failed to initialize default admin', error);
+    logger.error('Failed to initialize seed data', error);
   }
 });

@@ -1,6 +1,6 @@
 import { timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { MainSchema } from '@/db/db.schema';
-import { UserTable } from '../user/user.model';
+import { UserTable } from '../../user/user.model';
 
 export const OutletOwnerTable = MainSchema.table('outlet_owner', {
     id: uuid('id').defaultRandom().notNull().primaryKey(),

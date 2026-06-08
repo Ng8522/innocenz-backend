@@ -13,3 +13,6 @@ export const PermissionTable = MainSchema.table('m_permission', {
     createdBy: varchar('created_by').notNull(),
     updatedBy: varchar('updated_by').notNull(),
 });
+
+export type PermissionType = typeof PermissionTable.$inferSelect;
+export type PermissionInsertType = typeof PermissionTable.$inferInsert;

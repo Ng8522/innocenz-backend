@@ -1,7 +1,7 @@
 import { primaryKey, uuid, timestamp, varchar } from 'drizzle-orm/pg-core';
 import { MainSchema } from '@/db/db.schema';
 import { AgencyTable } from '../agency.model';
-import { UserTable } from '../../user/user.model';
+import { UserTable } from '../../../user/user.model';
 
 export const AgencyUserTable = MainSchema.table(
   'agency_user',

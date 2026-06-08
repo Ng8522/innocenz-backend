@@ -1,7 +1,7 @@
 import { timestamp, uuid, varchar, jsonb, text } from 'drizzle-orm/pg-core';
 import { MainSchema } from '@/db/db.schema';
 import { UserTable } from '../../user/user.model';
-import { AgencyTable } from '../../agency/agency.model';
+import { AgencyTable } from '../agency/agency.model';
 
 export const PrTable = MainSchema.table('m_pr', {
     id: uuid('id').defaultRandom().notNull().primaryKey(),
