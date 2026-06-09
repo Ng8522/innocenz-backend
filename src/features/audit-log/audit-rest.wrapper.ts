@@ -1,8 +1,14 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
-import { auditLogRepository } from '@/composition-root';
 import type { AuditActionType } from './audit.wrapper';
 import { logger } from '@/util/logger';
-import { paramId } from '@/util/params';
+import {
+  entityIdFromParams,
+  entityIdFromResponse,
+  redactSensitive,
+  writePlatformAuditLog,
+} from './audit.util';
+
+export { entityIdFromParams, entityIdFromResponse } from './audit.util';
 
 export interface RestAuditOptions {
   entity: string;
@@ -12,37 +18,7 @@ export interface RestAuditOptions {
   getNewData?: (req: Request, responseBody: unknown) => unknown;
 }
 
-export function entityIdFromResponse(_req: Request, body: unknown): string | null {
-  const data = (body as { data?: { id?: string } })?.data;
-  return data?.id ?? null;
-}
-
-export function entityIdFromParams(req: Request): string | null {
-  const id = req.params.id ?? req.params.roleId;
-  if (!id) return null;
-  return paramId(id);
-}
-
-function getIpAddress(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const forwardedStr = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-    return forwardedStr.split(',')[0].trim();
-  }
-
-  const realIp = req.headers['x-real-ip'];
-  if (realIp) {
-    return Array.isArray(realIp) ? realIp[0] : realIp;
-  }
-
-  return req.ip || req.socket?.remoteAddress || 'unknown';
-}
-
-function getUserAgent(req: Request): string {
-  return req.headers['user-agent'] || 'unknown';
-}
-
-async function writeAuditLog(
+async function writeRestAuditLog(
   req: Request,
   options: RestAuditOptions,
   responseBody: unknown,
@@ -64,39 +40,35 @@ async function writeAuditLog(
 
     await Promise.all(
       entityIdValue.map((id, index) =>
-        auditLogRepository.createAuditLog({
-          userId: req.admin?.id ?? null,
-          role: req.admin ? 'admin' : null,
+        writePlatformAuditLog({
+          req,
           action: options.action,
           entity: options.entity,
           entityId: id,
-          oldData: !isCreateAction ? oldArray[index] : undefined,
-          newData: !isDeleteAction ? newArray[index] : undefined,
-          ipAddress: getIpAddress(req),
-          userAgent: getUserAgent(req),
+          oldData: !isCreateAction ? redactSensitive(oldArray[index]) : undefined,
+          newData: !isDeleteAction ? redactSensitive(newArray[index]) : undefined,
         }),
       ),
     );
     return;
   }
 
-  await auditLogRepository.createAuditLog({
-    userId: req.admin?.id ?? null,
-    role: req.admin ? 'admin' : null,
+  await writePlatformAuditLog({
+    req,
     action: options.action,
     entity: options.entity,
     entityId: entityIdValue,
-    oldData: !isCreateAction ? oldData : undefined,
-    newData: !isDeleteAction ? newDataValue : undefined,
-    ipAddress: getIpAddress(req),
-    userAgent: getUserAgent(req),
+    oldData: !isCreateAction ? redactSensitive(oldData) : undefined,
+    newData: !isDeleteAction ? redactSensitive(newDataValue) : undefined,
   });
 }
 
+/** Opt-in wrapper for routes that need oldData capture. Global middleware covers everything else. */
 export function withRestAudit(options: RestAuditOptions, handler: RequestHandler): RequestHandler {
   const isCreateAction = options.action === 'CREATE' || options.action === 'BULK_CREATE';
 
   return async (req: Request, res: Response, next: NextFunction) => {
+    req.auditLogged = true;
     let oldData: unknown = null;
     let capturedBody: unknown = null;
 
@@ -105,7 +77,7 @@ export function withRestAudit(options: RestAuditOptions, handler: RequestHandler
       capturedBody = body;
 
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        void writeAuditLog(req, options, capturedBody, oldData).catch((error) => {
+        void writeRestAuditLog(req, options, capturedBody, oldData).catch((error) => {
           logger.error('[withRestAudit] Failed to write audit log', error);
         });
       }

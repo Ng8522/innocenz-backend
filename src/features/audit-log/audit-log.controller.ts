@@ -13,6 +13,7 @@ export class AuditLogControllerClass {
           dateFrom: req.query.dateFrom as string | undefined,
           dateTo: req.query.dateTo as string | undefined,
           userId: req.query.userId as string | undefined,
+          role: req.query.role as string | undefined,
           entity: req.query.entity as string | undefined,
           entityId: req.query.entityId as string | undefined,
           action: req.query.action as string | undefined,
@@ -57,6 +58,15 @@ export class AuditLogControllerClass {
   async listEntities(_req: Request, res: Response) {
     try {
       const data = await this.auditLogRepository.getDistinctEntities();
+      res.status(200).json({ success: true, message: 'OK', data });
+    } catch {
+      res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });
+    }
+  }
+
+  async listRoles(_req: Request, res: Response) {
+    try {
+      const data = await this.auditLogRepository.getDistinctRoles();
       res.status(200).json({ success: true, message: 'OK', data });
     } catch {
       res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });

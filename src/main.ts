@@ -12,9 +12,11 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 
 import { typeDefs, resolvers } from '@/graphql';
 import { createContext, GraphQLContext } from '@/graphql/context';
+import { auditLogPlugin } from '@/graphql/audit.plugin';
 import { applyDirectives } from '@/graphql/directives';
 import v1Router from '@/router/v1.js';
 import { requestLoggerMiddleware } from './middlewares/request-logger';
+import { platformAuditMiddleware } from './middlewares/platform-audit';
 import { env } from './env';
 import { logger } from './util/logger';
 import { initAdmin } from './scripts/init-admin';
@@ -144,6 +146,7 @@ async function startApolloServer(): Promise<void> {
     schema,
     introspection: true,
     plugins: [
+      auditLogPlugin(),
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
         includeCookies: true,

@@ -46,5 +46,6 @@ export const resolvers = {
     },
     auditLogActions: async () => auditLogRepository.getDistinctActions(),
     auditLogEntities: async () => auditLogRepository.getDistinctEntities(),
+    auditLogRoles: async () => auditLogRepository.getDistinctRoles(),
   },
 };

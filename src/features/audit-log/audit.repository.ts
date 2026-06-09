@@ -11,6 +11,7 @@ export type AuditLogFilter = {
   dateFrom?: string;
   dateTo?: string;
   userId?: string;
+  role?: string;
   entity?: string;
   entityId?: string;
   action?: string;
@@ -67,6 +68,9 @@ export class AuditLogRepositoryClass {
     }
     if (filter.userId) {
       whereCondition.push(eq(AuditLogTable.userId, filter.userId));
+    }
+    if (filter.role) {
+      whereCondition.push(eq(AuditLogTable.role, filter.role));
     }
     if (filter.entity) {
       whereCondition.push(eq(AuditLogTable.entity, filter.entity));
@@ -140,6 +144,16 @@ export class AuditLogRepositoryClass {
       .orderBy(asc(AuditLogTable.entity));
 
     return results.map((r) => r.entity).filter((entity): entity is string => entity !== null);
+  }
+
+  async getDistinctRoles(): Promise<string[]> {
+    const results = await db
+      .select({ role: AuditLogTable.role })
+      .from(AuditLogTable)
+      .groupBy(AuditLogTable.role)
+      .orderBy(asc(AuditLogTable.role));
+
+    return results.map((r) => r.role).filter((role): role is string => role !== null);
   }
 
   async getById(id: number) {

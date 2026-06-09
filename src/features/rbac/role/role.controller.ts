@@ -9,6 +9,7 @@ import { Error } from '@/error/index';
 const RoleSchema = z.object({
   roleName: z.string().min(1).max(100),
   status: z.string().default('active'),
+  isParentFrom: z.string().optional(),
 });
 
 export class RoleControllerClass {

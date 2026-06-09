@@ -23,6 +23,7 @@ export const typeDefs = `#graphql
     dateFrom: String
     dateTo: String
     userId: ID
+    role: String
     entity: String
     entityId: ID
     action: String
@@ -55,5 +56,6 @@ export const typeDefs = `#graphql
 
     auditLogActions: [String!]! @auth
     auditLogEntities: [String!]! @auth
+    auditLogRoles: [String!]! @auth
   }
 `;

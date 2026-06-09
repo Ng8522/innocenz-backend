@@ -9,6 +9,7 @@ export const PrTable = MainSchema.table('m_pr', {
     icNo: varchar('ic_no', { length: 20 }).notNull(),
     prNo: varchar('pr_no', { length: 20 }).notNull(),
     prAgency: uuid('pr_agency').references(() => AgencyTable.id).notNull(),
+    profileImage: varchar('profile_image'),
     comcardImages: jsonb('comcard_images').notNull(),
     language: text('language').array().notNull().default([]),
     bwhMeasurements: jsonb('bwh_measurements').notNull(),

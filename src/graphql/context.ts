@@ -7,6 +7,7 @@ export interface GraphQLContext {
   user: AdminType | null;
   req: Request;
   tx?: DbTransaction;
+  auditLogged?: boolean;
 }
 
 export async function createContext({ req }: { req: Request }): Promise<GraphQLContext> {

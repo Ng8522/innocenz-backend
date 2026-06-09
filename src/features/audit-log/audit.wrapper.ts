@@ -134,6 +134,7 @@ export function withAudit<TParent, TArgs, TResult>(
           );
         }
 
+        context.auditLogged = true;
         return result;
       } catch (error) {
         try {

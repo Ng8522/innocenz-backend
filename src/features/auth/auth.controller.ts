@@ -69,6 +69,7 @@ class AuthControllerClass {
       const accessToken = this.jwtController.generateAccessToken(tokenPayload);
       const refreshToken = this.jwtController.generateRefreshToken(tokenPayload);
       const decodedToken = this.jwtController.verifyToken(accessToken);
+      req.admin = admin;
 
       return res.status(200).json({
         success: true,
