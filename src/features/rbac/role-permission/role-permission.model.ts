@@ -1,6 +1,6 @@
 import { MainSchema } from "@/db/db.schema";
-import { RoleTable } from "../master-data/role/role.model";
-import { PermissionTable } from "../master-data/permission/permission.model";
+import { RoleTable } from "../role/role.model";
+import { PermissionTable } from "../permission/permission.model";
 import { uuid, timestamp, varchar } from "drizzle-orm/pg-core";
 
 export const RolePermissionTable = MainSchema.table('role_permission', {

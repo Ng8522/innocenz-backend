@@ -108,11 +108,14 @@ export class AdminControllerClass {
 
   async remove(req: Request, res: Response) {
     try {
-      const deleted = await this.adminRepository.delete(paramId(req.params.id));
-      if (!deleted) {
+      const admin = await this.adminRepository.delete(
+        paramId(req.params.id),
+        req.admin?.email ?? 'system',
+      );
+      if (!admin) {
         return res.status(404).json({ success: false, message: Error.NOT_FOUND, data: null });
       }
-      res.status(200).json({ success: true, message: 'Admin deleted', data: null });
+      res.status(200).json({ success: true, message: 'Admin deactivated', data: omitPassword(admin) });
     } catch {
       res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });
     }

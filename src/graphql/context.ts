@@ -1,10 +1,12 @@
 import { Request } from 'express';
 import { authRepository } from '@/composition-root';
 import type { AdminType } from '@/features/admin/admin.model';
+import type { DbTransaction } from '@/types/db-transaction';
 
 export interface GraphQLContext {
   user: AdminType | null;
   req: Request;
+  tx?: DbTransaction;
 }
 
 export async function createContext({ req }: { req: Request }): Promise<GraphQLContext> {

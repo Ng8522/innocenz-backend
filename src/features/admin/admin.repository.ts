@@ -39,8 +39,7 @@ export class AdminRepositoryClass {
     return row ?? null;
   }
 
-  async delete(id: string): Promise<boolean> {
-    const rows = await db.delete(AdminTable).where(eq(AdminTable.id, id)).returning({ id: AdminTable.id });
-    return rows.length > 0;
+  async delete(id: string, updatedBy: string): Promise<AdminType | null> {
+    return this.update(id, { status: 'inactive', updatedBy });
   }
 }

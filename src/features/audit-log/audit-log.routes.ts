@@ -6,6 +6,8 @@ const router = Router();
 
 router.use(authenticateJWT);
 
+router.get('/actions', auditLogController.listActions.bind(auditLogController));
+router.get('/entities', auditLogController.listEntities.bind(auditLogController));
 router.get('', auditLogController.list.bind(auditLogController));
 router.get('/:id', auditLogController.getById.bind(auditLogController));
 

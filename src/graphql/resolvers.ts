@@ -1,5 +1,6 @@
 import { mergeResolvers } from '@graphql-tools/merge';
 import { resolvers as authResolvers } from '@/features/auth/auth.resolvers';
+import { resolvers as auditLogResolvers } from '@/features/audit-log/audit.resolvers';
 
 const baseResolvers = {
   Query: {
@@ -10,4 +11,4 @@ const baseResolvers = {
   },
 };
 
-export const resolvers = mergeResolvers([baseResolvers, authResolvers]);
+export const resolvers = mergeResolvers([baseResolvers, authResolvers, auditLogResolvers]);
