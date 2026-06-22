@@ -1,7 +1,7 @@
 import type { AdminType } from '@/features/admin/admin.model';
 import { authRepository, jwtController } from '@/composition-root';
 import type { GraphQLContext } from '@/graphql/context';
-import { comparePassword, hashPassword } from '@/util/password';
+import { comparePassword } from '@/util/password';
 import { GraphQLError } from 'graphql';
 
 function transformAdmin(admin: AdminType) {
@@ -44,7 +44,9 @@ export const resolvers = {
         });
       }
 
-      const isPasswordValid = await comparePassword(password, admin.password);
+      const isPasswordValid = admin.password
+        ? await comparePassword(password, admin.password)
+        : false;
       if (!isPasswordValid) {
         throw new GraphQLError('Invalid email or password', {
           extensions: { code: 'UNAUTHENTICATED', http: { status: 401 } },
@@ -71,7 +73,7 @@ export const resolvers = {
       {
         input,
       }: {
-        input: { email: string; displayName: string; password: string };
+        input: { email: string; displayName: string };
       },
     ) => {
       const existing = await authRepository.getAdminByEmail(input.email);
@@ -81,11 +83,10 @@ export const resolvers = {
         });
       }
 
-      const passwordHash = await hashPassword(input.password);
       const admin = await authRepository.createAdmin({
         email: input.email,
         displayName: input.displayName,
-        password: passwordHash,
+        password: null,
         status: 'active',
         createdBy: 'system',
         updatedBy: 'system',

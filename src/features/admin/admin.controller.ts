@@ -1,12 +1,11 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { AdminRepositoryClass } from './admin.repository';
-import { hashPassword } from '@/util/password';
 import { paginate } from '@/util/pagination';
 import { Error } from '@/error/index';
 import { paramId } from '@/util/params';
 
-function omitPassword<T extends { password?: string }>(admin: T) {
+function omitPassword<T extends { password?: string | null }>(admin: T) {
   const { password: _, ...rest } = admin;
   return rest;
 }
@@ -14,14 +13,12 @@ function omitPassword<T extends { password?: string }>(admin: T) {
 const CreateAdminSchema = z.object({
   email: z.email(),
   displayName: z.string().min(1).max(100),
-  password: z.string().min(6),
   status: z.string().default('active'),
 });
 
 const UpdateAdminSchema = z.object({
   email: z.email().optional(),
   displayName: z.string().min(1).max(100).optional(),
-  password: z.string().min(6).optional(),
   status: z.string().optional(),
 });
 
@@ -67,11 +64,10 @@ export class AdminControllerClass {
         return res.status(409).json({ success: false, message: Error.USER_ALREADY_EXISTS, data: null });
       }
 
-      const passwordHash = await hashPassword(parsed.data.password);
       const admin = await this.adminRepository.create({
         email: parsed.data.email,
         displayName: parsed.data.displayName,
-        password: passwordHash,
+        password: null,
         status: parsed.data.status,
         createdBy: 'system',
         updatedBy: 'system',
@@ -91,9 +87,6 @@ export class AdminControllerClass {
       }
 
       const updateData: Record<string, unknown> = { ...parsed.data, updatedBy: 'system' };
-      if (parsed.data.password) {
-        updateData.password = await hashPassword(parsed.data.password);
-      }
 
       const admin = await this.adminRepository.update(paramId(req.params.id), updateData);
       if (!admin) {

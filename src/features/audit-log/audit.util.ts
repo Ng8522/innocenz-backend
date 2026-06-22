@@ -23,6 +23,19 @@ export function getUserAgent(req: Request): string {
   return req.headers['user-agent'] || 'unknown';
 }
 
+export function serializeForAudit(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(serializeForAudit);
+  if (typeof value !== 'object') return value;
+
+  const serialized: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+    serialized[key] = serializeForAudit(val);
+  }
+  return serialized;
+}
+
 export function redactSensitive(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (Array.isArray(value)) return value.map(redactSensitive);
@@ -46,10 +59,52 @@ export function entityIdFromResponse(_req: Request, body: unknown): string | nul
   return data?.id ?? data?.user?.id ?? (data?.auditLogId != null ? String(data.auditLogId) : null);
 }
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function pathSegments(req: Request): string[] {
+  return req.originalUrl.split('?')[0].split('/').filter(Boolean);
+}
+
+/** Resolve entity id from URL when route params are not populated yet (parent middleware runs before route match). */
+export function entityIdFromUrl(req: Request): string | null {
+  const segments = pathSegments(req);
+  for (let i = segments.length - 1; i >= 0; i -= 1) {
+    const segment = segments[i];
+    if (UUID_REGEX.test(segment) && segment !== 'sync') {
+      return segment;
+    }
+  }
+  return null;
+}
+
+export function agencyUserKeysFromRequest(
+  req: Request,
+): { agencyId: string; userId: string } | null {
+  if (req.params.agencyId && req.params.userId) {
+    return {
+      agencyId: paramId(req.params.agencyId),
+      userId: paramId(req.params.userId),
+    };
+  }
+
+  const segments = pathSegments(req);
+  const index = segments.indexOf('agency-user');
+  if (index < 0) return null;
+
+  const agencyId = segments[index + 1];
+  const userId = segments[index + 2];
+  if (agencyId && userId && UUID_REGEX.test(agencyId) && UUID_REGEX.test(userId)) {
+    return { agencyId, userId };
+  }
+
+  return null;
+}
+
 export function entityIdFromParams(req: Request): string | null {
   const id = req.params.id ?? req.params.roleId;
-  if (!id) return null;
-  return paramId(id);
+  if (id) return paramId(id);
+  return entityIdFromUrl(req);
 }
 
 const RESOURCE_ENTITY: Record<string, string> = {
@@ -58,6 +113,7 @@ const RESOURCE_ENTITY: Record<string, string> = {
   agency: 'Agency',
   'agency-user': 'AgencyUser',
   pr: 'PR',
+  'outlet-owner': 'OutletOwner',
   outlet: 'Outlet',
   'audit-log': 'AuditLog',
   roles: 'Role',
@@ -155,9 +211,14 @@ export async function logRestMutation(
     action,
     entity,
     entityId,
-    oldData: !isCreate && success ? redactSensitive(requestBody) : undefined,
+    oldData:
+      !isCreate && success && req.auditOldData != null
+        ? redactSensitive(serializeForAudit(req.auditOldData))
+        : undefined,
     newData: !isDelete
-      ? redactSensitive(success ? (responseData ?? requestBody) : { requestBody, responseBody })
+      ? redactSensitive(
+          serializeForAudit(success ? (responseData ?? requestBody) : { requestBody, responseBody }),
+        )
       : undefined,
   });
 }

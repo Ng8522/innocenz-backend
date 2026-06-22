@@ -5,6 +5,7 @@ declare global {
     interface Request {
       admin?: AdminType;
       auditLogged?: boolean;
+      auditOldData?: unknown;
     }
   }
 }

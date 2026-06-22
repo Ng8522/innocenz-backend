@@ -21,6 +21,9 @@ import { env } from './env';
 import { logger } from './util/logger';
 import { initAdmin } from './scripts/init-admin';
 import { initRoles } from './scripts/init-roles';
+import { registerAllAuditOldDataFetchers } from './features/audit-log/register-audit-fetchers';
+
+registerAllAuditOldDataFetchers();
 
 const app = express();
 

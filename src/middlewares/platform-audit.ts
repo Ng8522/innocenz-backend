@@ -1,10 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '@/util/logger';
-import { logRestMutation, redactSensitive } from '@/features/audit-log/audit.util';
+import { fetchAuditOldData } from '@/features/audit-log/audit-old-data.registry';
+import { logRestMutation, redactSensitive, resolveEntityFromPath, resolveRestAction } from '@/features/audit-log/audit.util';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-export function platformAuditMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function platformAuditMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   if (!MUTATING_METHODS.has(req.method)) {
     next();
     return;
@@ -13,6 +18,17 @@ export function platformAuditMiddleware(req: Request, res: Response, next: NextF
   if (req.originalUrl.split('?')[0].endsWith('/health')) {
     next();
     return;
+  }
+
+  const path = req.originalUrl.split('?')[0];
+  const action = resolveRestAction(req.method, path);
+  if ((action === 'UPDATE' || action === 'DELETE') && !req.auditLogged) {
+    try {
+      const entity = resolveEntityFromPath(path);
+      req.auditOldData = await fetchAuditOldData(entity, req);
+    } catch (error) {
+      logger.warn('[platformAuditMiddleware] Failed to fetch old data for audit log', error);
+    }
   }
 
   let responseBody: unknown = null;

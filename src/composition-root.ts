@@ -17,8 +17,11 @@ import { AuditLogRepositoryClass } from '@/features/audit-log/audit.repository.j
 import { AuditLogControllerClass } from '@/features/audit-log/audit-log.controller.js';
 import { AgencyRepositoryClass } from '@/features/master-data/agency/agency.repository.js';
 import { AgencyControllerClass } from '@/features/master-data/agency/agency.controller.js';
+import { UserRepositoryClass } from '@/features/user/user.repository.js';
 import { PrRepositoryClass } from '@/features/master-data/pr/pr.repository.js';
 import { PrControllerClass } from '@/features/master-data/pr/pr.controller.js';
+import { OutletOwnerRepositoryClass } from '@/features/master-data/outlet-owner/outlet-owner.repository.js';
+import { OutletOwnerControllerClass } from '@/features/master-data/outlet-owner/outlet-owner.controller.js';
 import { OutletRepositoryClass } from '@/features/master-data/outlet-owner/outlet/outlet.repository.js';
 import { OutletControllerClass } from '@/features/master-data/outlet-owner/outlet/outlet.controller.js';
 import { AgencyUserRepositoryClass } from '@/features/master-data/agency/agency-user/agency-user.repository.js';
@@ -52,8 +55,13 @@ export const auditLogController = new AuditLogControllerClass(auditLogRepository
 export const agencyRepository = new AgencyRepositoryClass();
 export const agencyController = new AgencyControllerClass(agencyRepository);
 
+export const userRepository = new UserRepositoryClass();
+
 export const prRepository = new PrRepositoryClass();
-export const prController = new PrControllerClass(prRepository);
+export const prController = new PrControllerClass(prRepository, userRepository);
+
+export const outletOwnerRepository = new OutletOwnerRepositoryClass();
+export const outletOwnerController = new OutletOwnerControllerClass(outletOwnerRepository, userRepository);
 
 export const outletRepository = new OutletRepositoryClass();
 export const outletController = new OutletControllerClass(outletRepository);

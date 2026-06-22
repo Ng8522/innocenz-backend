@@ -13,7 +13,7 @@ export class AgencyUserRepositoryClass {
     createdBy: AgencyUserTable.createdBy,
     updatedBy: AgencyUserTable.updatedBy,
     agencyName: AgencyTable.agencyName,
-    userName: UserTable.accName,
+    userName: UserTable.name,
     userEmail: UserTable.email,
   };
 
@@ -28,7 +28,7 @@ export class AgencyUserRepositoryClass {
       .innerJoin(AgencyTable, eq(AgencyUserTable.agencyId, AgencyTable.id))
       .innerJoin(UserTable, eq(AgencyUserTable.userId, UserTable.id))
       .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(AgencyTable.agencyName, UserTable.accName);
+      .orderBy(AgencyTable.agencyName, UserTable.name);
   }
 
   async getByKey(agencyId: string, userId: string): Promise<AgencyUserRow | null> {

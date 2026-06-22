@@ -5,6 +5,7 @@ import {
   entityIdFromParams,
   entityIdFromResponse,
   redactSensitive,
+  serializeForAudit,
   writePlatformAuditLog,
 } from './audit.util';
 
@@ -45,8 +46,8 @@ async function writeRestAuditLog(
           action: options.action,
           entity: options.entity,
           entityId: id,
-          oldData: !isCreateAction ? redactSensitive(oldArray[index]) : undefined,
-          newData: !isDeleteAction ? redactSensitive(newArray[index]) : undefined,
+          oldData: !isCreateAction ? redactSensitive(serializeForAudit(oldArray[index])) : undefined,
+          newData: !isDeleteAction ? redactSensitive(serializeForAudit(newArray[index])) : undefined,
         }),
       ),
     );
@@ -58,8 +59,8 @@ async function writeRestAuditLog(
     action: options.action,
     entity: options.entity,
     entityId: entityIdValue,
-    oldData: !isCreateAction ? redactSensitive(oldData) : undefined,
-    newData: !isDeleteAction ? redactSensitive(newDataValue) : undefined,
+    oldData: !isCreateAction ? redactSensitive(serializeForAudit(oldData)) : undefined,
+    newData: !isDeleteAction ? redactSensitive(serializeForAudit(newDataValue)) : undefined,
   });
 }
 

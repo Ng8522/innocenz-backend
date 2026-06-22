@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { AuthRepositoryClass } from './auth.repository.js';
 import { JwtControllerClass } from '@/features/jwt/jwt.controller.js';
 import { Error } from '@/error/index.js';
-import { hashPassword, comparePassword } from '@/util/password.js';
+import { comparePassword } from '@/util/password.js';
 import { logger } from '@/util/logger.js';
 
 const LoginSchema = z.object({
@@ -14,7 +14,6 @@ const LoginSchema = z.object({
 const RegisterSchema = z.object({
   email: z.email('Invalid email format'),
   displayName: z.string().min(1, 'Display name is required').max(100),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
 class AuthControllerClass {
@@ -53,7 +52,9 @@ class AuthControllerClass {
         });
       }
 
-      const isPasswordValid = await comparePassword(password, admin.password);
+      const isPasswordValid = admin.password
+        ? await comparePassword(password, admin.password)
+        : false;
       if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
@@ -109,7 +110,7 @@ class AuthControllerClass {
         });
       }
 
-      const { email, displayName, password } = parseResult.data;
+      const { email, displayName } = parseResult.data;
       const existing = await this.authRepository.getAdminByEmail(email);
       if (existing) {
         return res.status(409).json({
@@ -119,11 +120,10 @@ class AuthControllerClass {
         });
       }
 
-      const passwordHash = await hashPassword(password);
       const admin = await this.authRepository.createAdmin({
         email,
         displayName,
-        password: passwordHash,
+        password: null,
         status: 'active',
         createdBy: 'system',
         updatedBy: 'system',

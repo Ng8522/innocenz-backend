@@ -6,6 +6,7 @@ import rbacRoutes from '@/features/rbac/rbac.routes.js';
 import auditLogRoutes from '@/features/audit-log/audit-log.routes.js';
 import agencyRoutes from '@/features/master-data/agency/agency.routes.js';
 import prRoutes from '@/features/master-data/pr/pr.routes.js';
+import outletOwnerRoutes from '@/features/master-data/outlet-owner/outlet-owner.routes.js';
 import outletRoutes from '@/features/master-data/outlet-owner/outlet/outlet.routes.js';
 import agencyUserRoutes from '@/features/master-data/agency/agency-user/agency-user.routes.js';
 import { platformAuditMiddleware } from '@/middlewares/platform-audit.js';
@@ -21,6 +22,7 @@ v1Router.use('/rbac', rbacRoutes);
 v1Router.use('/audit-log', auditLogRoutes);
 v1Router.use('/agency', agencyRoutes);
 v1Router.use('/pr', prRoutes);
+v1Router.use('/outlet-owner', outletOwnerRoutes);
 v1Router.use('/outlet', outletRoutes);
 v1Router.use('/agency-user', agencyUserRoutes);
 

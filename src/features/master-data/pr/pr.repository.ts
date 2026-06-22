@@ -2,6 +2,7 @@ import { eq, ilike, and, SQL, ne } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { PrTable, PrType, PrInsertType, PrFilter } from './pr.model';
 import { INACTIVE_STATUS } from '@/features/rbac/constants';
+import { DbTransaction } from '@/types/db-transaction';
 
 export class PrRepositoryClass {
   async list(filter: PrFilter = {}): Promise<PrType[]> {
@@ -36,8 +37,8 @@ export class PrRepositoryClass {
     return rows[0] ?? null;
   }
 
-  async create(data: PrInsertType): Promise<PrType> {
-    const [row] = await db.insert(PrTable).values(data).returning();
+  async create(data: PrInsertType, tx?: DbTransaction): Promise<PrType> {
+    const [row] = await (tx ?? db).insert(PrTable).values(data).returning();
     return row;
   }
 

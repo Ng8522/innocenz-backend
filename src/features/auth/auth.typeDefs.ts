@@ -16,7 +16,6 @@ export const typeDefs = `#graphql
   input RegisterInput {
     email: String!
     displayName: String!
-    password: String!
   }
 
   type AuthResponse {

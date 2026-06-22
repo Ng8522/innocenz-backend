@@ -9,7 +9,7 @@ export const AdminTable = MainSchema.table('admin', {
   id: uuid('id').defaultRandom().notNull().primaryKey(),
   email: varchar('email').unique().notNull(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
-  password: varchar('password_hash', { length: 255 }).notNull(),
+  password: varchar('password_hash'),
   status: varchar('status', { length: 100 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
