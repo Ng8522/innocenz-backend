@@ -18,6 +18,7 @@ import { AuditLogControllerClass } from '@/features/audit-log/audit-log.controll
 import { AgencyRepositoryClass } from '@/features/master-data/agency/agency.repository.js';
 import { AgencyControllerClass } from '@/features/master-data/agency/agency.controller.js';
 import { UserRepositoryClass } from '@/features/user/user.repository.js';
+import { UserControllerClass } from '@/features/user/user.controller.js';
 import { PrRepositoryClass } from '@/features/master-data/pr/pr.repository.js';
 import { PrControllerClass } from '@/features/master-data/pr/pr.controller.js';
 import { OutletOwnerRepositoryClass } from '@/features/master-data/outlet-owner/outlet-owner.repository.js';
@@ -56,6 +57,7 @@ export const agencyRepository = new AgencyRepositoryClass();
 export const agencyController = new AgencyControllerClass(agencyRepository);
 
 export const userRepository = new UserRepositoryClass();
+export const userController = new UserControllerClass(userRepository);
 
 export const prRepository = new PrRepositoryClass();
 export const prController = new PrControllerClass(prRepository, userRepository);

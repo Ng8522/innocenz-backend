@@ -1,4 +1,4 @@
-import { timestamp, uuid, varchar, boolean } from 'drizzle-orm/pg-core';
+import { timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { MainSchema } from '@/db/db.schema';
 
 export const UserTable = MainSchema.table('user', {
@@ -15,16 +15,25 @@ export const UserTable = MainSchema.table('user', {
     updatedBy: varchar('updated_by').notNull(),
 });
 
+export type UserSortField = 'CREATED_AT' | 'UPDATED_AT' | 'ACC_NAME' | 'EMAIL' | 'STATUS';
+
+export type UserSort = {
+    field?: UserSortField;
+    direction?: 'ASC' | 'DESC';
+};
+
 export type UserFilter = {
     id?: string;
     email?: string;
     phoneNum?: string;
     accName?: string;
     status?: string;
+    roleId?: string;
     /** Joined on/after this date (start of day). Use with endDate for a period filter. */
-    startDate?: Date | string;
+    startDate?: Date | string | null;
     /** Joined on/before this date (end of day). Use with startDate for a period filter. */
-    endDate?: Date | string;
-  };
+    endDate?: Date | string | null;
+};
+
 export type UserType = typeof UserTable.$inferSelect;
 export type UserInsertType = typeof UserTable.$inferInsert;
