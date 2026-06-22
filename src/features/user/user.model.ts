@@ -15,5 +15,16 @@ export const UserTable = MainSchema.table('user', {
     updatedBy: varchar('updated_by').notNull(),
 });
 
+export type UserFilter = {
+    id?: string;
+    email?: string;
+    phoneNum?: string;
+    accName?: string;
+    status?: string;
+    /** Joined on/after this date (start of day). Use with endDate for a period filter. */
+    startDate?: Date | string;
+    /** Joined on/before this date (end of day). Use with startDate for a period filter. */
+    endDate?: Date | string;
+  };
 export type UserType = typeof UserTable.$inferSelect;
 export type UserInsertType = typeof UserTable.$inferInsert;
