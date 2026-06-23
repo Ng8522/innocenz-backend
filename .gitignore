@@ -148,3 +148,7 @@ bun.lockb
 *.pem
 jwt-private.pem
 jwt-public.pem
+
+# Uploaded profile images
+public/img/users/*
+!public/img/users/.gitkeep

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 
 import http from 'node:http';
+import path from 'node:path';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -21,7 +22,10 @@ import { env } from './env';
 import { logger } from './util/logger';
 import { initAdmin } from './scripts/init-admin';
 import { initRoles } from './scripts/init-roles';
+import { ensureProfileImageDir } from './util/profile-image';
 import { registerAllAuditOldDataFetchers } from './features/audit-log/register-audit-fetchers';
+
+ensureProfileImageDir();
 
 registerAllAuditOldDataFetchers();
 
@@ -69,6 +73,7 @@ app.use(
   }),
 );
 app.use(requestLoggerMiddleware);
+app.use('/img', express.static(path.join(process.cwd(), 'public', 'img')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -199,8 +204,8 @@ server.listen(Number(PORT), async () => {
   }
 
   try {
-    await initAdmin();
     await initRoles();
+    await initAdmin();
   } catch (error) {
     logger.error('Failed to initialize seed data', error);
   }

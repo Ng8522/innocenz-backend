@@ -2,8 +2,6 @@ import { AuthRepositoryClass } from '@/features/auth/auth.repository.js';
 import { AuthControllerClass } from '@/features/auth/auth.controller.js';
 import { JwtControllerClass } from '@/features/jwt/jwt.controller.js';
 import { HealthControllerClass } from '@/features/health/health.controller.js';
-import { AdminRepositoryClass } from '@/features/admin/admin.repository.js';
-import { AdminControllerClass } from '@/features/admin/admin.controller.js';
 import { RoleRepositoryClass } from '@/features/rbac/role/role.repository.js';
 import { RoleControllerClass } from '@/features/rbac/role/role.controller.js';
 import { ModuleRepositoryClass } from '@/features/rbac/module/module.repository.js';
@@ -12,29 +10,17 @@ import { PermissionRepositoryClass } from '@/features/rbac/permission/permission
 import { PermissionControllerClass } from '@/features/rbac/permission/permission.controller.js';
 import { RolePermissionRepositoryClass } from '@/features/rbac/role-permission/role-permission.repository.js';
 import { RolePermissionControllerClass } from '@/features/rbac/role-permission/role-permission.controller.js';
-import { RbacControllerClass } from '@/features/rbac/rbac.controller.js';
-import { AuditLogRepositoryClass } from '@/features/audit-log/audit.repository.js';
-import { AuditLogControllerClass } from '@/features/audit-log/audit-log.controller.js';
-import { AgencyRepositoryClass } from '@/features/master-data/agency/agency.repository.js';
-import { AgencyControllerClass } from '@/features/master-data/agency/agency.controller.js';
 import { UserRepositoryClass } from '@/features/user/user.repository.js';
 import { UserControllerClass } from '@/features/user/user.controller.js';
-import { PrRepositoryClass } from '@/features/master-data/pr/pr.repository.js';
-import { PrControllerClass } from '@/features/master-data/pr/pr.controller.js';
-import { OutletOwnerRepositoryClass } from '@/features/master-data/outlet-owner/outlet-owner.repository.js';
-import { OutletOwnerControllerClass } from '@/features/master-data/outlet-owner/outlet-owner.controller.js';
-import { OutletRepositoryClass } from '@/features/master-data/outlet-owner/outlet/outlet.repository.js';
-import { OutletControllerClass } from '@/features/master-data/outlet-owner/outlet/outlet.controller.js';
-import { AgencyUserRepositoryClass } from '@/features/master-data/agency/agency-user/agency-user.repository.js';
-import { AgencyUserControllerClass } from '@/features/master-data/agency/agency-user/agency-user.controller.js';
+import { UserRoleRepositoryClass } from '@/features/rbac/user-role/user-role.repository.js';
+import { UserRoleControllerClass } from '@/features/rbac/user-role/user-role.controller.js';
 
 export const jwtController = new JwtControllerClass();
-export const authRepository = new AuthRepositoryClass(jwtController);
-export const authController = new AuthControllerClass(authRepository, jwtController);
+export const userRoleRepository = new UserRoleRepositoryClass();
+export const userRepository = new UserRepositoryClass(userRoleRepository);
+export const authRepository = new AuthRepositoryClass(jwtController, userRepository, userRoleRepository);
+export const authController = new AuthControllerClass(authRepository, jwtController, userRepository);
 export const healthController = new HealthControllerClass();
-
-export const adminRepository = new AdminRepositoryClass();
-export const adminController = new AdminControllerClass(adminRepository);
 
 export const roleRepository = new RoleRepositoryClass();
 export const roleController = new RoleControllerClass(roleRepository);
@@ -48,25 +34,5 @@ export const permissionController = new PermissionControllerClass(permissionRepo
 export const rolePermissionRepository = new RolePermissionRepositoryClass();
 export const rolePermissionController = new RolePermissionControllerClass(rolePermissionRepository);
 
-export const rbacController = new RbacControllerClass(rolePermissionRepository);
-
-export const auditLogRepository = new AuditLogRepositoryClass();
-export const auditLogController = new AuditLogControllerClass(auditLogRepository);
-
-export const agencyRepository = new AgencyRepositoryClass();
-export const agencyController = new AgencyControllerClass(agencyRepository);
-
-export const userRepository = new UserRepositoryClass();
 export const userController = new UserControllerClass(userRepository);
-
-export const prRepository = new PrRepositoryClass();
-export const prController = new PrControllerClass(prRepository, userRepository);
-
-export const outletOwnerRepository = new OutletOwnerRepositoryClass();
-export const outletOwnerController = new OutletOwnerControllerClass(outletOwnerRepository, userRepository);
-
-export const outletRepository = new OutletRepositoryClass();
-export const outletController = new OutletControllerClass(outletRepository);
-
-export const agencyUserRepository = new AgencyUserRepositoryClass();
-export const agencyUserController = new AgencyUserControllerClass(agencyUserRepository);
+export const userRoleController = new UserRoleControllerClass(userRoleRepository);

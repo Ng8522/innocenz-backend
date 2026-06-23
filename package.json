@@ -7,11 +7,11 @@
     "dev": "tsx watch --clear-screen=false src/main.ts src/**/*.ts",
     "start": "node dist/main.js",
     "build": "esbuild src/main.ts --bundle --platform=node --target=node22 --minify --format=esm --outfile=dist/main.js --packages=external --alias:@=./src --alias:graphql/error=graphql/error/index.js",
-    "migrate": "drizzle-kit generate && drizzle-kit migrate && tsx src/scripts/init-admin.ts && tsx src/scripts/init-roles.ts",
-    "migrate:deploy": "drizzle-kit migrate --config=drizzle.migrate.config.ts && tsx src/scripts/init-admin.ts && tsx src/scripts/init-roles.ts",
+    "migrate": "drizzle-kit generate && drizzle-kit migrate --config=drizzle.migrate.config.ts && tsx --tsconfig tsconfig.json src/scripts/init-roles.ts && tsx --tsconfig tsconfig.json src/scripts/init-admin.ts",
+    "migrate:deploy": "drizzle-kit migrate --config=drizzle.migrate.config.ts && tsx --tsconfig tsconfig.json src/scripts/init-roles.ts && tsx --tsconfig tsconfig.json src/scripts/init-admin.ts",
+    "db:reset": "node scripts/reset-migrations.mjs && drizzle-kit migrate --config=drizzle.migrate.config.ts && tsx --tsconfig tsconfig.json src/scripts/init-roles.ts && tsx --tsconfig tsconfig.json src/scripts/init-admin.ts",
+    "db:seed": "tsx --tsconfig tsconfig.json src/scripts/init-roles.ts && tsx --tsconfig tsconfig.json src/scripts/init-admin.ts",
     "initialize": "node scripts/setup-env.mjs",
-    "db:reset": "node scripts/reset-migrations.mjs && drizzle-kit migrate --config=drizzle.migrate.config.ts && tsx src/scripts/init-admin.ts && tsx src/scripts/init-roles.ts",
-    "db:seed": "tsx src/scripts/init-admin.ts && tsx src/scripts/init-roles.ts",
     "test": "vitest"
   },
   "devDependencies": {
@@ -19,6 +19,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.1.0",
     "@types/node": "^25.0.9",
     "@types/pg": "^8.16.0",
     "drizzle-kit": "^0.31.8",
@@ -43,6 +44,7 @@
     "graphql": "^16.12.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.2.0",
     "pg": "^8.17.2",
     "winston": "^3.19.0",
     "zod": "^4.3.5"

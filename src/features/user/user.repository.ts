@@ -1,142 +1,21 @@
-import { eq, and, asc, desc, count, ilike, inArray, SQL } from 'drizzle-orm';
+import { eq, and, asc, desc, count, ilike, inArray, SQL, sql, or } from 'drizzle-orm';
 import { db } from '@/db/index';
-import { UserTable, UserType, UserInsertType, UserFilter, UserSort } from './user.model';
-import { UserRoleTable } from '@/features/rbac/user-role/user-role.model';
+import { UserTable, UserType, UserInsertType, UserFilter } from './user.model';
 import { DbTransaction } from '@/types/db-transaction';
 import { logger } from '@/util/logger';
-import {
-  paginateQuery,
-  PaginationParams,
-  PaginatedResponse,
-  PgQueryType,
-} from '@/util/pagination';
 import { buildPeriodDateWhere } from '@/util/filter-date-format';
-
-function buildUserWhere(filter: UserFilter): SQL | undefined {
-  const whereConditions: SQL[] = [];
-
-  if (filter.id) {
-    whereConditions.push(eq(UserTable.id, filter.id));
-  }
-  if (filter.email) {
-    whereConditions.push(ilike(UserTable.email, `%${filter.email}%`));
-  }
-  if (filter.phoneNum) {
-    whereConditions.push(ilike(UserTable.phoneNum, `%${filter.phoneNum}%`));
-  }
-  if (filter.accName) {
-    whereConditions.push(ilike(UserTable.accName, `%${filter.accName}%`));
-  }
-  if (filter.status) {
-    whereConditions.push(eq(UserTable.status, filter.status));
-  }
-  if (filter.roleId) {
-    whereConditions.push(
-      inArray(
-        UserTable.id,
-        db
-          .select({ userId: UserRoleTable.userId })
-          .from(UserRoleTable)
-          .where(eq(UserRoleTable.roleId, filter.roleId)),
-      ),
-    );
-  }
-
-  const createdAtFilter = buildPeriodDateWhere(
-    UserTable.createdAt,
-    filter.startDate ?? undefined,
-    filter.endDate ?? undefined,
-  );
-  if (createdAtFilter) {
-    whereConditions.push(createdAtFilter);
-  }
-
-  return whereConditions.length > 0 ? and(...whereConditions) : undefined;
-}
-
-function buildUserOrderBy(sort?: UserSort) {
-  const direction = sort?.direction === 'ASC' ? asc : desc;
-
-  switch (sort?.field ?? 'CREATED_AT') {
-    case 'ACC_NAME':
-      return direction(UserTable.accName);
-    case 'EMAIL':
-      return direction(UserTable.email);
-    case 'STATUS':
-      return direction(UserTable.status);
-    case 'UPDATED_AT':
-      return direction(UserTable.updatedAt);
-    default:
-      return direction(UserTable.createdAt);
-  }
-}
+import { UserRoleRepositoryClass } from '@/features/rbac/user-role/user-role.repository';
 
 export class UserRepositoryClass {
-  constructor() {}
-
-  /**
-   * Get users with filter, sort, and pagination (REST-style: filter/sort/pagination in repository).
-   * Used by GraphQL users query and any client that needs paginated user list.
-   */
-  async getUsers(
-    filter: UserFilter = {},
-    pagination: PaginationParams = {},
-    sort?: UserSort,
-    tx?: DbTransaction,
-  ): Promise<PaginatedResponse<UserType>> {
-    try {
-      logger.info('[UserRepository.getUsers] Getting users:', { filter, pagination, sort });
-
-      const where = buildUserWhere(filter);
-      const dbClient = tx ?? db;
-      const pageSize = pagination.pageSize ?? 10;
-      const pageNumber = pagination.pageNumber ?? pagination.page ?? 1;
-
-      const [{ totalCount }] = await dbClient
-        .select({ totalCount: count() })
-        .from(UserTable)
-        .where(where);
-
-      const baseQuery = dbClient
-        .select()
-        .from(UserTable)
-        .where(where)
-        .orderBy(buildUserOrderBy(sort));
-
-      const { query, pagination: paginationMeta } = paginateQuery(
-        baseQuery as unknown as PgQueryType,
-        pageSize,
-        pageNumber,
-        Number(totalCount),
-      );
-
-      const users = (await query) as UserType[];
-
-      logger.info('[UserRepository.getUsers] Users successfully retrieved:', users.length);
-
-      return {
-        query: users,
-        pagination: paginationMeta,
-      };
-    } catch (error) {
-      logger.error('[UserRepository.getUsers] Error:', error);
-      throw error;
-    }
-  }
-
-  async getById(id: string, tx?: DbTransaction): Promise<UserType | null> {
-    const dbClient = tx ?? db;
-    const rows = await dbClient.select().from(UserTable).where(eq(UserTable.id, id)).limit(1);
-    return rows[0] ?? null;
-  }
+  constructor(private userRoleRepository: UserRoleRepositoryClass) {}
 
   async createUser(
-    user: Omit<UserInsertType, 'createdAt' | 'updatedAt'>,
+    user: Omit<UserInsertType, 'id' | 'createdAt' | 'updatedAt'>,
     tx?: DbTransaction,
   ): Promise<UserType> {
     try {
       logger.info('[UserRepository.createUser] Creating user:', user);
-      const dbClient = tx ?? db;
+      const dbClient = tx || db;
       const [newUser] = await dbClient
         .insert(UserTable)
         .values({
@@ -170,7 +49,144 @@ export class UserRepositoryClass {
       return updatedUser ?? null;
     } catch (error) {
       logger.error('[UserRepository.updateUser] Error:', error);
-      throw error;
+      return null;
+    }
+  }
+
+  async getUsersPaginated(params: {
+    filter?: UserFilter;
+    sort?: { field: 'email' | 'phoneNum' | 'accName' | 'createdAt' | 'updatedAt'; direction: 'asc' | 'desc' };
+    page: number;
+    pageSize: number;
+  }): Promise<{ users: UserType[]; totalCount: number }> {
+    try {
+      const { filter, sort, page, pageSize } = params;
+      const conditions: Array<SQL | undefined> = [];
+
+      if (filter?.phoneNum && filter?.accName && filter.phoneNum === filter.accName) {
+        const term = `${filter.phoneNum}%`;
+        conditions.push(or(ilike(UserTable.phoneNum, term), ilike(UserTable.accName, term)));
+      } else {
+        if (filter?.phoneNum) {
+          conditions.push(ilike(UserTable.phoneNum, `%${filter.phoneNum}%`));
+        }
+        if (filter?.accName) {
+          conditions.push(ilike(UserTable.accName, `%${filter.accName}%`));
+        }
+      }
+
+      if (filter?.email && filter?.accName && filter.email === filter.accName) {
+        const term = `${filter.email}%`;
+        conditions.push(or(ilike(UserTable.email, term), ilike(UserTable.accName, term)));
+      } else {
+        if (filter?.email) {
+          conditions.push(ilike(UserTable.email, `%${filter.email}%`));
+        }
+        if (filter?.accName) {
+          conditions.push(ilike(UserTable.accName, `%${filter.accName}%`));
+        }
+      }
+
+      if (filter?.status) {
+        conditions.push(eq(UserTable.status, filter.status));
+      }
+
+      if (filter?.roleId) {
+        const userIdsWithRole = await this.userRoleRepository.getUserIdsByRoleId(filter.roleId);
+        if (userIdsWithRole.length === 0) {
+          logger.info('[UserRepository.getUsersPaginated] No users found with role:', filter.roleId);
+          return { users: [], totalCount: 0 };
+        }
+        conditions.push(inArray(UserTable.id, userIdsWithRole));
+      }
+
+      const createdAtFilter = buildPeriodDateWhere(
+        UserTable.createdAt,
+        filter?.startDate ?? undefined,
+        filter?.endDate ?? undefined,
+      );
+      if (createdAtFilter) {
+        conditions.push(createdAtFilter);
+      }
+
+      const whereConditions = conditions.filter(
+        (condition): condition is SQL => condition !== undefined,
+      )
+      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+      const sortColumn = sort?.field === 'email' ? UserTable.email
+        : sort?.field === 'phoneNum' ? UserTable.phoneNum
+          : sort?.field === 'accName' ? UserTable.accName
+            : sort?.field === 'updatedAt' ? UserTable.updatedAt
+              : UserTable.createdAt;
+      const sortDirection = sort?.direction === 'desc' ? asc : desc;
+
+      const [countRow] = await db.select({ value: sql<number>`count(*)::int` as SQL<number> }).from(UserTable).where(whereClause);
+      const totalCount = Number(countRow?.value ?? 0);
+
+      const users = await db
+        .select()
+        .from(UserTable)
+        .where(whereClause)
+        .orderBy(sortDirection(sortColumn))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      logger.info('[UserRepository.getUsersPaginated] Fetched page', page, 'totalCount:', totalCount);
+
+      return { users, totalCount };
+    } catch (error) {
+      logger.error('[UserRepository.getUsersPaginated] Error:', error);
+      return { users: [], totalCount: 0 };
+    }
+  }
+
+  async getUserById(id: string): Promise<UserType | null> {
+    try {
+      const users = await db
+        .select()
+        .from(UserTable)
+        .where(eq(UserTable.id, id))
+        .limit(1);
+
+      return users.length > 0 ? users[0] : null;
+    } catch (error) {
+      logger.error('[UserRepository.getUserById] Error:', error);
+      return null;
+    }
+  }
+
+  async getUsersByIds(ids: string[]): Promise<UserType[]> {
+    if (ids.length === 0) return [];
+    try {
+      const users = await db
+        .select()
+        .from(UserTable)
+        .where(inArray(UserTable.id, ids));
+      return users;
+    } catch (error) {
+      logger.error('[UserRepository.getUsersByIds] Error:', error);
+      return [];
+    }
+  }
+
+  async getUserByLoginMethod(method: 'email' | 'phone', value: string): Promise<UserType | null> {
+    try {
+      logger.info('[UserRepository.getUserByLoginMethod] Getting user by login method:', method);
+      let users: UserType[] = [];
+
+      if (method === 'email') {
+        logger.debug('[UserRepository.getUserByLoginMethod] Getting user by email:', value);
+        users = await db.select().from(UserTable).where(eq(UserTable.email, value)).limit(1);
+      } else if (method === 'phone') {
+        logger.debug('[UserRepository.getUserByLoginMethod] Getting user by phone:', value);
+        users = await db.select().from(UserTable).where(eq(UserTable.phoneNum, value)).limit(1);
+      }
+      logger.info('[UserRepository.getUserByLoginMethod] Users:', users);
+      return users.length > 0 ? users[0] : null;
+    } catch (error) {
+      logger.error('[UserRepository.getUserByLoginMethod] Error:', error);
+      return null;
     }
   }
 }

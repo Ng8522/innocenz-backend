@@ -26,6 +26,7 @@ export const env = createEnv({
     POSTGRES_DB: z.string().min(1),
     DATABASE_URL: z.string(),
     LOGGING_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+    FRONTEND_URL: z.string().url().default('http://localhost:3000'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

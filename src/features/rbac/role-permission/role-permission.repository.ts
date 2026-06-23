@@ -8,110 +8,108 @@ import {
   RolePermissionType,
   RolePermissionInsertType,
 } from './role-permission.model';
-import { ACTIVE_STATUS } from '@/features/rbac/constants';
-
+import { logger } from '@/util/logger';
+import { DbTransaction } from '@/types/db-transaction';
+import { RolePermissionGroupType } from '@/schema/rbac.schema';
 export class RolePermissionRepositoryClass {
-  async list(filter: { roleId?: string; permissionId?: string } = {}) {
-    const conditions = [
-      eq(RoleTable.status, ACTIVE_STATUS),
-      eq(PermissionTable.status, ACTIVE_STATUS),
-      eq(ModuleTable.status, ACTIVE_STATUS),
-    ];
-    if (filter.roleId) conditions.push(eq(RolePermissionTable.roleId, filter.roleId));
-    if (filter.permissionId) conditions.push(eq(RolePermissionTable.permissionId, filter.permissionId));
+  constructor() { }
 
-    return db
-      .select({
-        id: RolePermissionTable.id,
-        roleId: RolePermissionTable.roleId,
-        roleName: RoleTable.roleName,
-        permissionId: RolePermissionTable.permissionId,
-        permissionName: PermissionTable.permissionName,
-        moduleId: PermissionTable.moduleId,
-        moduleName: ModuleTable.moduleName,
-        createdAt: RolePermissionTable.createdAt,
-        updatedAt: RolePermissionTable.updatedAt,
-      })
-      .from(RolePermissionTable)
-      .innerJoin(RoleTable, eq(RolePermissionTable.roleId, RoleTable.id))
-      .innerJoin(PermissionTable, eq(RolePermissionTable.permissionId, PermissionTable.id))
-      .innerJoin(ModuleTable, eq(PermissionTable.moduleId, ModuleTable.id))
-      .where(and(...conditions));
+  async getRolePermissions(roleId: string): Promise<RolePermissionGroupType[]> {
+    try {
+      const results = await db
+        .select({
+          id: RolePermissionTable.id,
+          roleId: RolePermissionTable.roleId,
+          permissionId: RolePermissionTable.permissionId,
+          permissionType: PermissionTable.permissionType,
+          moduleId: PermissionTable.moduleId,
+          moduleName: ModuleTable.moduleName,
+        })
+        .from(RolePermissionTable)
+        .innerJoin(PermissionTable, eq(RolePermissionTable.permissionId, PermissionTable.id))
+        .innerJoin(ModuleTable, eq(PermissionTable.moduleId, ModuleTable.id))
+        .where(eq(RolePermissionTable.roleId, roleId));
+      logger.info('[RolePermissionRepository.getRolePermissions] Role permissions fetched successfully');
+      return results;
+    } catch (error) {
+      logger.error('[RolePermissionRepository.getRolePermissions] Error:', error);
+      return [];
+    }
   }
 
-  async getById(id: string) {
-    const rows = await db
-      .select({
-        id: RolePermissionTable.id,
-        roleId: RolePermissionTable.roleId,
-        roleName: RoleTable.roleName,
-        permissionId: RolePermissionTable.permissionId,
-        permissionName: PermissionTable.permissionName,
-        moduleId: PermissionTable.moduleId,
-        moduleName: ModuleTable.moduleName,
-        createdAt: RolePermissionTable.createdAt,
-        updatedAt: RolePermissionTable.updatedAt,
-      })
-      .from(RolePermissionTable)
-      .innerJoin(RoleTable, eq(RolePermissionTable.roleId, RoleTable.id))
-      .innerJoin(PermissionTable, eq(RolePermissionTable.permissionId, PermissionTable.id))
-      .innerJoin(ModuleTable, eq(PermissionTable.moduleId, ModuleTable.id))
-      .where(eq(RolePermissionTable.id, id))
-      .limit(1);
-    return rows[0] ?? null;
+  async assignPermissionsToRole(
+    data: Omit<RolePermissionInsertType, 'id' | 'createdAt' | 'updatedAt'>,
+    tx?: DbTransaction
+  ): Promise<RolePermissionType> {
+    try {
+      const dbClient = tx || db;
+      logger.info('[RolePermissionRepository.assignPermissionsToRole] Assigning permissions to role...');
+      const [rolePermission] = await dbClient
+        .insert(RolePermissionTable)
+        .values(data)
+        .returning();
+      logger.info('[RolePermissionRepository.assignPermissionsToRole] Permissions assigned successfully');
+      return rolePermission;
+    } catch (error) {
+      logger.error('[RolePermissionRepository.assignPermissionsToRole] Error:', error);
+      throw error;
+    }
   }
 
-  async create(data: RolePermissionInsertType): Promise<RolePermissionType> {
-    const [row] = await db.insert(RolePermissionTable).values(data).returning();
-    return row;
+  async removeAllPermissionsFromRole(roleId: string, tx?: DbTransaction): Promise<boolean> {
+    try {
+      const dbClient = tx || db;
+      logger.info('[RolePermissionRepository.removeAllPermissionsFromRole] Removing all permissions from role...');
+      await dbClient
+        .delete(RolePermissionTable)
+        .where(eq(RolePermissionTable.roleId, roleId));
+      logger.info('[RolePermissionRepository.removeAllPermissionsFromRole] All permissions removed successfully');
+      return true;
+    } catch (error) {
+      logger.error('[RolePermissionRepository.removeAllPermissionsFromRole] Error:', error);
+      return false;
+    }
   }
 
-  async sync(roleId: string, permissionIds: string[], actor: string): Promise<RolePermissionType[]> {
-    await db.delete(RolePermissionTable).where(eq(RolePermissionTable.roleId, roleId));
-    if (permissionIds.length === 0) return [];
+  async updateRolePermission(
+    roleId: string,
+    permissionIds: string[],
+    createdBy: string,
+    updatedBy: string,
+    tx?: DbTransaction
+  ): Promise<RolePermissionType[]> {
+    try {
+      const dbClient = tx || db;
+      logger.info('[RolePermissionRepository.updateRolePermission] Updating role permissions...');
 
-    return db
-      .insert(RolePermissionTable)
-      .values(
-        permissionIds.map((permissionId) => ({
-          roleId,
-          permissionId,
-          createdBy: actor,
-          updatedBy: actor,
-        })),
-      )
-      .returning();
+      // Delete existing permissions
+      await dbClient
+        .delete(RolePermissionTable)
+        .where(eq(RolePermissionTable.roleId, roleId));
+
+      // Insert new permissions
+      if (permissionIds.length > 0) {
+        const newPermissions = await dbClient
+          .insert(RolePermissionTable)
+          .values(permissionIds.map(permissionId => ({
+            roleId,
+            permissionId,
+            createdBy,
+            updatedBy,
+          })))
+          .returning();
+
+        logger.info('[RolePermissionRepository.updateRolePermission] Role permissions updated successfully');
+        return newPermissions;
+      }
+
+      return [];
+
+    } catch (error) {
+      logger.error('[RolePermissionRepository.updateRolePermission] Error:', error);
+      return [];
+    }
   }
 
-  async remove(id: string): Promise<boolean> {
-    const rows = await db
-      .delete(RolePermissionTable)
-      .where(eq(RolePermissionTable.id, id))
-      .returning({ id: RolePermissionTable.id });
-    return rows.length > 0;
-  }
-
-  async getPermissionsByRoleName(roleName: string) {
-    return db
-      .select({
-        roleId: RoleTable.id,
-        roleName: RoleTable.roleName,
-        permissionId: PermissionTable.id,
-        permissionName: PermissionTable.permissionName,
-        moduleId: ModuleTable.id,
-        moduleName: ModuleTable.moduleName,
-      })
-      .from(RoleTable)
-      .innerJoin(RolePermissionTable, eq(RoleTable.id, RolePermissionTable.roleId))
-      .innerJoin(PermissionTable, eq(RolePermissionTable.permissionId, PermissionTable.id))
-      .innerJoin(ModuleTable, eq(PermissionTable.moduleId, ModuleTable.id))
-      .where(
-        and(
-          eq(RoleTable.roleName, roleName),
-          eq(RoleTable.status, ACTIVE_STATUS),
-          eq(PermissionTable.status, ACTIVE_STATUS),
-          eq(ModuleTable.status, ACTIVE_STATUS),
-        ),
-      );
-  }
+  
 }

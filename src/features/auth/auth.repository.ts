@@ -1,74 +1,27 @@
 import { db } from '@/db/index';
-import { eq, inArray, and } from 'drizzle-orm';
+import { eq, inArray, and, SQL, or, ilike, asc, desc, sql } from 'drizzle-orm';
 import { JwtControllerClass } from '@/features/jwt/jwt.controller.js';
 import { logger } from '@/util/logger.js';
-import { UserTable, UserType } from '@/features/user/user.model.js';
-import { UserRoleTable } from '@/features/rbac/user-role/user-role.model.js';
-import { RoleTable } from '@/features/rbac/role/role.model.js';
-
+import { UserInsertType, UserTable, UserType } from '@/features/user/user.model.js';
+import { UserRoleTable, UserRoleInsertType, UserRoleType } from '@/features/rbac/user-role/user-role.model.js';
+import { RoleInsertType, RoleTable, RoleType } from '@/features/rbac/role/role.model.js';
+import { DbTransaction } from '@/types/db-transaction';
+import { ModuleTable, ModuleType, ModuleInsertType } from '@/features/rbac/module/module.model.js';
+import { PermissionTable, PermissionType, PermissionInsertType } from '@/features/rbac/permission/permission.model.js';
+import { RolePermissionTable, RolePermissionInsertType, RolePermissionType } from '@/features/rbac/role-permission/role-permission.model.js';
+import { UserRepositoryClass as UserRepository } from '@/features/user/user.repository.js';
+import { UserRoleRepositoryClass as UserRoleRepository } from '@/features/rbac/user-role/user-role.repository.js';
+import { RolePermissionGroupType } from '@/schema/rbac.schema.js';
+import { ResetPasswordTokenTable, ResetPasswordTokenType } from './auth.model.js';
 export class AuthRepositoryClass {
-  constructor(private jwtController: JwtControllerClass) { }
-
-  async getUserByLoginMethod(method: 'email' | 'phone', value: string): Promise<UserType | null> {
-    try {
-      logger.info('[AuthRepository.getUserByLoginMethod] Getting user by login method:', method);
-      let users: UserType[] = [];
-
-      if (method === 'email') {
-        logger.debug('[AuthRepository.getUserByLoginMethod] Getting user by email:', value);
-        users = await db.select().from(UserTable).where(eq(UserTable.email, value)).limit(1);
-      } else if (method === 'phone') {
-        logger.debug('[AuthRepository.getUserByLoginMethod] Getting user by phone:', value);
-        users = await db.select().from(UserTable).where(eq(UserTable.phoneNum, value)).limit(1);
-      }
-      logger.info('[AuthRepository.getUserByLoginMethod] Users:', users);
-      return users.length > 0 ? users[0] : null;
-    } catch (error) {
-      logger.error('[AuthRepository.getUserByLoginMethod] Error:', error);
-      return null;
-    }
-  }
-
-  async getUserById(id: string): Promise<UserType | null> {
-    try {
-      const users = await db
-        .select()
-        .from(UserTable)
-        .where(eq(UserTable.id, id))
-        .limit(1);
-
-      return users.length > 0 ? users[0] : null;
-    } catch (error) {
-      logger.error('[AuthRepository.getUserById] Error:', error);
-      return null;
-    }
-  }
-
-  async getUsersByIds(ids: string[]): Promise<UserType[]> {
-    if (ids.length === 0) return [];
-    try {
-      const users = await db
-        .select()
-        .from(UserTable)
-        .where(inArray(UserTable.id, ids));
-      return users;
-    } catch (error) {
-      logger.error('[AuthRepository.getUsersByIds] Error:', error);
-      return [];
-    }
-  }
+  constructor(
+    private jwtController: JwtControllerClass,
+    private userRepository: UserRepository,
+    private userRoleRepository: UserRoleRepository
+  ) { }
 
   async getUserIdsByRoleId(roleId: string): Promise<string[]> {
-    try {
-      const rows = await db
-        .select({ userId: UserRoleTable.userId })
-        .from(UserRoleTable)
-        .where(and(eq(UserRoleTable.roleId, roleId)));
-      return rows.map((r) => r.userId);
-    } catch (error) {
-      logger.error('[AuthRepository.getUserIdsByRoleId] Error:', error);
-      return [];
-    }
+    return this.userRoleRepository.getUserIdsByRoleId(roleId);
   }
 
   async getRolesForUserIds(userIds: string[]): Promise<Array<{ userId: string; roleId: string; roleName: string }>> {
@@ -90,5 +43,140 @@ export class AuthRepositoryClass {
     }
   }
 
-  
+  async createUserWithRole(
+    userData: Omit<UserInsertType, 'id' | 'createdAt' | 'updatedAt'>,
+    roleId: string
+  ): Promise<UserType> {
+    try {
+      logger.info('[AuthRepository.createUserWithRole] Creating user with role...', {
+        email: userData.email,
+        roleId,
+      });
+      const newUser = await db.transaction(async (tx) => {
+        const user = await this.userRepository.createUser(userData, tx);
+        await this.userRoleRepository.assignRoleToUser(
+          {
+            userId: user.id,
+            roleId,
+            createdBy: userData.createdBy ?? 'system',
+            updatedBy: userData.updatedBy ?? 'system',
+          },
+          tx
+        );
+        return user;
+      });
+      logger.info('[AuthRepository.createUserWithRole] User created with role:', newUser.email);
+      return newUser;
+    } catch (error) {
+      logger.error('[AuthRepository.createUserWithRole] Error:', error);
+      throw error;
+    }
+  }
+
+  async getModulesWithPermissions(): Promise<Array<{
+    moduleId: string;
+    moduleName: string;
+    permissionId: string;
+    permissionType: string;
+    description: string;
+    status: string;
+    createdAt: Date;
+    updatedAt: Date;
+    createdBy: string;
+    updatedBy: string;
+  }>> {
+    try {
+      const results = await db
+        .select({
+          moduleId: ModuleTable.id,
+          moduleName: ModuleTable.moduleName,
+          permissionId: PermissionTable.id,
+          permissionType: PermissionTable.permissionType,
+          description: PermissionTable.description,
+          status: ModuleTable.status,
+          createdAt: ModuleTable.createdAt,
+          updatedAt: ModuleTable.updatedAt,
+          createdBy: ModuleTable.createdBy,
+          updatedBy: ModuleTable.updatedBy,
+        })
+        .from(ModuleTable)
+        .leftJoin(PermissionTable, eq(ModuleTable.id, PermissionTable.moduleId));
+
+      return results.map(r => ({
+        ...r,
+        permissionId: r.permissionId ?? '',
+        permissionType: r.permissionType || '',
+        description: r.description ?? '',
+      }));
+    } catch (error) {
+      logger.error('[AuthRepository.getModulesWithPermissions] Error:', error);
+      return [];
+    }
+  }
+
+  async getUserPermissions(userId: string): Promise<RolePermissionGroupType[]> {
+    try {
+      logger.info('[AuthRepository.getUserPermissions] Getting user permissions...');
+      const results = await db
+        .select({
+          id: RolePermissionTable.id,
+          roleId: RolePermissionTable.roleId,
+          permissionId: RolePermissionTable.permissionId,
+          permissionType: PermissionTable.permissionType,
+          moduleId: PermissionTable.moduleId,
+          moduleName: ModuleTable.moduleName,
+        })
+        .from(UserRoleTable)
+        .innerJoin(RolePermissionTable, eq(UserRoleTable.roleId, RolePermissionTable.roleId))
+        .innerJoin(PermissionTable, eq(RolePermissionTable.permissionId, PermissionTable.id))
+        .innerJoin(ModuleTable, eq(PermissionTable.moduleId, ModuleTable.id))
+        .where(and(
+          eq(UserRoleTable.userId, userId),
+          eq(RoleTable.status, 'active')
+        ));
+
+      logger.info('[AuthRepository.getUserPermissions] User permissions fetched successfully');
+      return results;
+    } catch (error) {
+      logger.error('[AuthRepository.getUserPermissions] Error:', error);
+      return [];
+    }
+  }
+
+  async createResetPasswordToken(userId: string, token: string, expiresAt: Date): Promise<void> {
+    try {
+      await db.delete(ResetPasswordTokenTable).where(eq(ResetPasswordTokenTable.userId, userId));
+      await db.insert(ResetPasswordTokenTable).values({
+        userId,
+        token,
+        expiresAt,
+      });
+      logger.info('[AuthRepository.createResetPasswordToken] Reset password token created successfully');
+    } catch (error) {
+      logger.error('[AuthRepository.createResetPasswordToken] Error:', error);
+      throw error;
+    }
+  }
+
+  async getPasswordResetToken(token: string): Promise<ResetPasswordTokenType | null> {
+    const rows = await db
+      .select()
+      .from(ResetPasswordTokenTable)
+      .where(eq(ResetPasswordTokenTable.token, token))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  async deletePasswordResetToken(token: string): Promise<void> {
+    await db
+      .delete(ResetPasswordTokenTable)
+      .where(eq(ResetPasswordTokenTable.token, token));
+  }
+
+  async updateUserPassword(userId: string, passwordHash: string): Promise<void> {
+    await db
+      .update(UserTable)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(UserTable.id, userId));
+  }
 }

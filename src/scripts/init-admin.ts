@@ -1,47 +1,104 @@
 import 'dotenv/config';
 import { fileURLToPath } from 'node:url';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/index';
-import { AdminTable } from '@/features/admin/admin.model';
+import { UserTable } from '@/features/user/user.model';
+import { RoleTable } from '@/features/rbac/role/role.model';
+import { UserRoleTable } from '@/features/rbac/user-role/user-role.model';
 import { hashPassword } from '@/util/password';
 import { logger } from '@/util/logger';
+import { DEFAULT_PROFILE_IMAGE } from '@/util/profile-image';
 
-const DEFAULT_ADMIN_EMAIL = process.env.DEFAULT_ADMIN_EMAIL;
+const DEFAULT_ADMIN_EMAIL = process.env.DEFAULT_ADMIN_EMAIL ?? 'innocenz@gmail.com';
 const DEFAULT_ADMIN_PASSWORD = process.env.DEFAULT_ADMIN_PASSWORD;
-const DEFAULT_ADMIN_NAME = process.env.DEFAULT_ADMIN_NAME ?? 'System Admin';
+const DEFAULT_ADMIN_NAME = process.env.DEFAULT_ADMIN_NAME ?? 'InnocenZ Admin';
+const ADMIN_ROLE_NAME = 'admin';
+const ACTOR = 'system';
 
-export async function initAdmin(): Promise<void> {
-  if (!DEFAULT_ADMIN_EMAIL || !DEFAULT_ADMIN_PASSWORD) {
-    logger.warn(
-      'Skipping default admin seed (set DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD in .env)',
-    );
-    return;
-  }
+async function getAdminRoleId(): Promise<string | null> {
+  const [adminRole] = await db
+    .select({ id: RoleTable.id })
+    .from(RoleTable)
+    .where(eq(RoleTable.roleName, ADMIN_ROLE_NAME))
+    .limit(1);
 
+  return adminRole?.id ?? null;
+}
+
+async function ensureAdminRoleForUser(userId: string, adminRoleId: string): Promise<void> {
   const existing = await db
-    .select({ id: AdminTable.id })
-    .from(AdminTable)
-    .where(eq(AdminTable.email, DEFAULT_ADMIN_EMAIL))
+    .select({ id: UserRoleTable.id })
+    .from(UserRoleTable)
+    .where(and(eq(UserRoleTable.userId, userId), eq(UserRoleTable.roleId, adminRoleId)))
     .limit(1);
 
   if (existing.length > 0) {
-    logger.info(`Default admin already exists: ${DEFAULT_ADMIN_EMAIL}`);
+    return;
+  }
+
+  await db.insert(UserRoleTable).values({
+    userId,
+    roleId: adminRoleId,
+    createdBy: ACTOR,
+    updatedBy: ACTOR,
+  });
+
+  logger.info(`Admin role assigned to user: ${userId}`);
+}
+
+export async function initAdmin(): Promise<void> {
+  const adminRoleId = await getAdminRoleId();
+  if (!adminRoleId) {
+    logger.warn('Admin role not found — run init-roles before init-admin');
+    return;
+  }
+
+  const [existingUser] = await db
+    .select({ id: UserTable.id, profileImage: UserTable.profileImage })
+    .from(UserTable)
+    .where(eq(UserTable.email, DEFAULT_ADMIN_EMAIL))
+    .limit(1);
+
+  if (existingUser) {
+    await ensureAdminRoleForUser(existingUser.id, adminRoleId);
+
+    if (!existingUser.profileImage) {
+      await db
+        .update(UserTable)
+        .set({ profileImage: DEFAULT_PROFILE_IMAGE, updatedAt: new Date(), updatedBy: ACTOR })
+        .where(eq(UserTable.id, existingUser.id));
+      logger.info(`Default admin profile image set: ${DEFAULT_ADMIN_EMAIL}`);
+    }
+
+    logger.info(`Default admin ready: ${DEFAULT_ADMIN_EMAIL}`);
+    return;
+  }
+
+  if (!DEFAULT_ADMIN_PASSWORD) {
+    logger.warn(
+      `User ${DEFAULT_ADMIN_EMAIL} not found — set DEFAULT_ADMIN_PASSWORD in .env to create the default admin`,
+    );
     return;
   }
 
   const passwordHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
 
-  await db.insert(AdminTable).values({
-    email: DEFAULT_ADMIN_EMAIL,
-    displayName: DEFAULT_ADMIN_NAME,
-    password: passwordHash,
-    status: 'active',
-    createdBy: 'system',
-    updatedBy: 'system',
-  });
+  const [user] = await db
+    .insert(UserTable)
+    .values({
+      email: DEFAULT_ADMIN_EMAIL,
+      accName: DEFAULT_ADMIN_NAME,
+      passwordHash,
+      profileImage: DEFAULT_PROFILE_IMAGE,
+      status: 'active',
+      createdBy: ACTOR,
+      updatedBy: ACTOR,
+    })
+    .returning();
 
-  logger.info(`Default admin created: ${DEFAULT_ADMIN_EMAIL}`);
+  await ensureAdminRoleForUser(user.id, adminRoleId);
+  logger.info(`Default admin user created: ${DEFAULT_ADMIN_EMAIL}`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

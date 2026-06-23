@@ -1,40 +1,66 @@
 import { eq, and, SQL } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { PermissionTable, PermissionType, PermissionInsertType } from './permission.model';
-import { INACTIVE_STATUS } from '@/features/rbac/constants';
-
+import { logger } from '@/util/logger';
+import { DbTransaction } from '@/types/db-transaction';
 export class PermissionRepositoryClass {
-  async list(filter: { moduleId?: string; status?: string } = {}): Promise<PermissionType[]> {
-    const conditions: SQL[] = [];
-    if (filter.moduleId) conditions.push(eq(PermissionTable.moduleId, filter.moduleId));
-    if (filter.status) conditions.push(eq(PermissionTable.status, filter.status));
-    return db
-      .select()
-      .from(PermissionTable)
-      .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(PermissionTable.permissionName);
+  constructor() {}
+
+  async getPermissionById(permissionId: string): Promise<PermissionType | null> {
+    try{
+      const permission = await db.select().from(PermissionTable).where(eq(PermissionTable.id, permissionId)).limit(1);
+      return permission.length > 0 ? permission[0] : null;
+    }catch (error) {
+      logger.error('[PermissionRepository.getPermissionById] Error:', error);
+      return null;
+    }
   }
 
-  async getById(id: string): Promise<PermissionType | null> {
-    const rows = await db.select().from(PermissionTable).where(eq(PermissionTable.id, id)).limit(1);
-    return rows[0] ?? null;
+  async createPermission(permissionData: Omit<PermissionInsertType, 'id' | 'createdAt' | 'updatedAt'>, tx?: DbTransaction): Promise<PermissionType> {
+    try{
+      const dbClient = tx || db;
+      logger.info('[PermissionRepository.createPermission] Creating permission...');
+      const [permission] = await dbClient
+        .insert(PermissionTable)
+        .values(permissionData)
+        .returning();
+      return permission;
+    }catch (error) {
+      logger.error('[PermissionRepository.createPermission] Error:', error);
+      throw error;
+    }
   }
 
-  async create(data: PermissionInsertType): Promise<PermissionType> {
-    const [row] = await db.insert(PermissionTable).values(data).returning();
-    return row;
+  async updatePermission(
+    permissionId: string,
+    permissionData: Partial<PermissionInsertType>,
+    tx?: DbTransaction
+  ): Promise<PermissionType | null> {
+    try {
+      const dbClient = tx || db;
+      
+      logger.info('[PermissionRepository.updatePermission] Updating permission...');
+      
+      const [permission] = await dbClient
+        .update(PermissionTable)
+        .set({ ...permissionData, updatedAt: new Date() })
+        .where(eq(PermissionTable.id, permissionId))
+        .returning();
+      
+      logger.info('[PermissionRepository.updatePermission] Permission updated successfully');
+      return permission || null;
+    } catch (error) {
+      logger.error('[PermissionRepository.updatePermission] Error:', error);
+      return null;
+    }
   }
 
-  async update(id: string, data: Partial<PermissionInsertType>): Promise<PermissionType | null> {
-    const [row] = await db
-      .update(PermissionTable)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(PermissionTable.id, id))
-      .returning();
-    return row ?? null;
-  }
-
-  async deactivate(id: string, updatedBy: string): Promise<PermissionType | null> {
-    return this.update(id, { status: INACTIVE_STATUS, updatedBy });
+  async getAllPermissions(): Promise<PermissionType[]> {
+    try {
+      return await db.select().from(PermissionTable);
+    } catch (error) {
+      logger.error('[PermissionRepository.getAllPermissions] Error:', error);
+      return [];
+    }
   }
 }

@@ -3,10 +3,7 @@ import { UserTokenInfo } from './jwt.model.js';
 import { logger } from '@/util/logger.js';
 import { env } from '@/env';
 
-interface TokenPayload extends JwtPayload {
-  username: string;
-  loginType: 'EMAIL' | 'CONTACT_NO';
-}
+interface TokenPayload extends JwtPayload, UserTokenInfo {}
 
 class JwtControllerClass {
   private privateKey: string;

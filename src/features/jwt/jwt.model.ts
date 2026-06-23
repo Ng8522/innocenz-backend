@@ -1,4 +1,4 @@
 export type UserTokenInfo = {
-  username: string;
-  loginType: 'EMAIL' | 'CONTACT_NO';
+  loginMethod: 'email' | 'phone';
+  loginCriteria: string;
 };

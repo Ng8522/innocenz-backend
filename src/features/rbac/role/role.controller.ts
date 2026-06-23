@@ -1,37 +1,41 @@
 import { Request, Response } from 'express';
-import { z } from 'zod';
 import { RoleRepositoryClass } from './role.repository';
+import { RoleType } from './role.model';
+import { RoleSchema } from '@/schema/rbac.schema';
 import { paginate } from '@/util/pagination';
 import { paramId } from '@/util/params';
 import { getActor } from '@/util/actor';
 import { Error } from '@/error/index';
 
-const RoleSchema = z.object({
-  roleName: z.string().min(1).max(100),
-  status: z.string().default('active'),
-  isParentFrom: z.string().optional(),
-});
+function filterRoles(roles: RoleType[], roleName?: string, status?: string): RoleType[] {
+  return roles.filter((role) => {
+    if (roleName && !role.roleName.toLowerCase().includes(roleName.toLowerCase())) return false;
+    if (status && role.status !== status) return false;
+    return true;
+  });
+}
 
 export class RoleControllerClass {
   constructor(private roleRepository: RoleRepositoryClass) {}
 
-  async list(req: Request, res: Response) {
+  async getRoles(req: Request, res: Response) {
     try {
       const page = Number(req.query.page ?? 1);
       const pageSize = Number(req.query.pageSize ?? 10);
-      const data = await this.roleRepository.list({
-        roleName: req.query.roleName as string | undefined,
-        status: req.query.status as string | undefined,
-      });
-      res.status(200).json({ success: true, message: 'OK', ...paginate(data, page, pageSize) });
+      const roles = filterRoles(
+        await this.roleRepository.getAllRoles(),
+        req.query.roleName as string | undefined,
+        req.query.status as string | undefined,
+      );
+      res.status(200).json({ success: true, message: 'OK', ...paginate(roles, page, pageSize) });
     } catch {
       res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });
     }
   }
 
-  async getById(req: Request, res: Response) {
+  async getRoleById(req: Request, res: Response) {
     try {
-      const role = await this.roleRepository.getById(paramId(req.params.id));
+      const role = await this.roleRepository.getRoleById(paramId(req.params.id));
       if (!role) return res.status(404).json({ success: false, message: Error.NOT_FOUND, data: null });
       res.status(200).json({ success: true, message: 'OK', data: role });
     } catch {
@@ -39,11 +43,11 @@ export class RoleControllerClass {
     }
   }
 
-  async create(req: Request, res: Response) {
+  async createRole(req: Request, res: Response) {
     try {
       const parsed = RoleSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.issues[0]?.message });
-      const data = await this.roleRepository.create({
+      const data = await this.roleRepository.createRole({
         ...parsed.data,
         createdBy: getActor(req),
         updatedBy: getActor(req),
@@ -54,11 +58,11 @@ export class RoleControllerClass {
     }
   }
 
-  async update(req: Request, res: Response) {
+  async updateRole(req: Request, res: Response) {
     try {
       const parsed = RoleSchema.partial().safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ success: false, message: parsed.error.issues[0]?.message });
-      const data = await this.roleRepository.update(paramId(req.params.id), {
+      const data = await this.roleRepository.updateRole(paramId(req.params.id), {
         ...parsed.data,
         updatedBy: getActor(req),
       });
@@ -69,9 +73,12 @@ export class RoleControllerClass {
     }
   }
 
-  async remove(req: Request, res: Response) {
+  async inactiveRole(req: Request, res: Response) {
     try {
-      const data = await this.roleRepository.deactivate(paramId(req.params.id), getActor(req));
+      const data = await this.roleRepository.updateRole(paramId(req.params.id), {
+        status: 'inactive',
+        updatedBy: getActor(req),
+      });
       if (!data) return res.status(404).json({ success: false, message: Error.NOT_FOUND, data: null });
       res.status(200).json({ success: true, message: 'Role deactivated', data });
     } catch {

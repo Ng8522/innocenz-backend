@@ -1,7 +1,7 @@
 import { timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { MainSchema } from '@/db/db.schema';
 
-export const ModuleTable = MainSchema.table('module', {
+export const ModuleTable = MainSchema.table('m_module', {
     id: uuid('id').defaultRandom().notNull().primaryKey(),
     moduleName: varchar('module_name').notNull(),
     status: varchar('status').notNull().default('active'),
