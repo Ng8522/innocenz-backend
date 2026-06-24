@@ -23,7 +23,7 @@ import { logger } from './util/logger';
 import { initAdmin } from './scripts/init-admin';
 import { initRoles } from './scripts/init-roles';
 import { ensureProfileImageDir } from './util/profile-image';
-import { registerAllAuditOldDataFetchers } from './features/audit-log/register-audit-fetchers';
+import { registerAllAuditOldDataFetchers } from './features/audit-log/audit-log.wrapper';
 
 ensureProfileImageDir();
 

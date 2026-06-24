@@ -1,7 +1,7 @@
 import type { ApolloServerPlugin } from '@apollo/server';
 import type { GraphQLContext } from '@/graphql/context';
 import { logger } from '@/util/logger';
-import { logGraphQLMutation } from '@/features/audit-log/audit.util';
+import { logGraphQLMutation } from '@/features/audit-log/audit-log.wrapper';
 
 export function auditLogPlugin(): ApolloServerPlugin<GraphQLContext> {
   return {

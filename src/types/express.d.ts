@@ -1,9 +1,9 @@
-import type { AdminType } from '@/features/admin/admin.model';
+import type { UserType } from '@/features/user/user.model';
 
 declare global {
   namespace Express {
     interface Request {
-      admin?: AdminType;
+      user?: UserType;
       auditLogged?: boolean;
       auditOldData?: unknown;
     }

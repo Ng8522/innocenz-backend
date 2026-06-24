@@ -24,6 +24,16 @@ export class AuthRepositoryClass {
     return this.userRoleRepository.getUserIdsByRoleId(roleId);
   }
 
+  async getUserDataByToken(token: string): Promise<UserType | null> {
+    try {
+      const payload = this.jwtController.verifyToken(token);
+      return this.userRepository.getUserByLoginMethod(payload.loginMethod, payload.loginCriteria);
+    } catch (error) {
+      logger.error('[AuthRepository.getUserDataByToken] Error:', error);
+      return null;
+    }
+  }
+
   async getRolesForUserIds(userIds: string[]): Promise<Array<{ userId: string; roleId: string; roleName: string }>> {
     if (userIds.length === 0) return [];
     try {

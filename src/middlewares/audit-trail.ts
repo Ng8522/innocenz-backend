@@ -20,9 +20,9 @@ export const createAuditTrailMiddleware = (
 ) => {
   return (action: AuditTrailAction) => {
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-      let admin = req.admin;
+      let user = req.user;
 
-      if (!admin) {
+      if (!user) {
         const token = req.header('Authorization')?.split(' ')[1];
         if (!token) {
           logger.error('Audit Trail: access token is missing or invalid');
@@ -30,16 +30,16 @@ export const createAuditTrailMiddleware = (
           return;
         }
 
-        admin = (await authRepository.getUserDataByToken(token)) ?? undefined;
-        if (!admin) {
-          logger.error('Audit Trail: admin could not be retrieved');
+        user = (await authRepository.getUserDataByToken(token)) ?? undefined;
+        if (!user) {
+          logger.error('Audit Trail: user could not be retrieved');
           res.status(401).json({ message: Error.UNAUTHORIZED });
           return;
         }
       }
 
       const entity = req.body as AuditTrailType;
-      const actor = admin.email;
+      const actor = user.email ?? user.phoneNum ?? user.id;
 
       if (action === AuditTrailAction.CREATE) {
         entity.createdBy = actor;

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '@/util/logger';
-import { fetchAuditOldData } from '@/features/audit-log/audit-old-data.registry';
-import { logRestMutation, redactSensitive, resolveEntityFromPath, resolveRestAction } from '@/features/audit-log/audit.util';
+import { fetchAuditOldData } from '@/features/audit-log/audit-log.repository';
+import { logRestMutation, redactSensitive, resolveEntityFromPath, resolveRestAction } from '@/features/audit-log/audit-log.wrapper';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

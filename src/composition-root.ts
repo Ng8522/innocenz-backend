@@ -14,6 +14,7 @@ import { UserRepositoryClass } from '@/features/user/user.repository.js';
 import { UserControllerClass } from '@/features/user/user.controller.js';
 import { UserRoleRepositoryClass } from '@/features/rbac/user-role/user-role.repository.js';
 import { UserRoleControllerClass } from '@/features/rbac/user-role/user-role.controller.js';
+import { AuditLogRepositoryClass } from '@/features/audit-log/audit-log.repository.js';
 
 export const jwtController = new JwtControllerClass();
 export const userRoleRepository = new UserRoleRepositoryClass();
@@ -36,3 +37,4 @@ export const rolePermissionController = new RolePermissionControllerClass(rolePe
 
 export const userController = new UserControllerClass(userRepository);
 export const userRoleController = new UserRoleControllerClass(userRoleRepository);
+export const auditLogRepository = new AuditLogRepositoryClass();
