@@ -31,8 +31,37 @@ registerAllAuditOldDataFetchers();
 
 const app = express();
 
-const corsOptions = {
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'https://studio.apollographql.com'],
+const frontendOrigin = env.FRONTEND_URL.replace(/\/en\/?$/, '').replace(/\/$/, '');
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const allowedOrigins = new Set([
+      frontendOrigin,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'https://studio.apollographql.com',
+    ]);
+
+    if (allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    if (
+      env.NODE_ENV === 'development' &&
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+    ) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
