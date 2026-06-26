@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { UserRepositoryClass } from './user.repository';
+import { UserProfileRepositoryClass } from './user-profile/user-profile.repository';
 import { UserFilter, UserSortField } from './user.model';
 import { Error } from '@/error/index';
 import { paramId } from '@/util/params';
@@ -7,22 +8,25 @@ import { getActor } from '@/util/actor';
 import {
   deleteProfileImageFile,
   profileImagePublicPath,
-  withProfileImage,
 } from '@/util/profile-image';
+import { withUserProfile, withUserProfiles } from '@/util/user-profile-image';
 import { logger } from '@/util/logger';
 
-const SORT_FIELDS: UserSortField[] = ['CREATED_AT', 'UPDATED_AT', 'ACC_NAME', 'EMAIL', 'STATUS'];
+const SORT_FIELDS: UserSortField[] = ['CREATED_AT', 'UPDATED_AT', 'USERNAME', 'EMAIL', 'STATUS'];
 
-const sortFieldMap: Record<UserSortField, 'email' | 'phoneNum' | 'accName' | 'createdAt' | 'updatedAt'> = {
+const sortFieldMap: Record<UserSortField, 'email' | 'phoneNum' | 'username' | 'createdAt' | 'updatedAt'> = {
   CREATED_AT: 'createdAt',
   UPDATED_AT: 'updatedAt',
-  ACC_NAME: 'accName',
+  USERNAME: 'username',
   EMAIL: 'email',
   STATUS: 'createdAt',
 };
 
 export class UserControllerClass {
-  constructor(private userRepository: UserRepositoryClass) {}
+  constructor(
+    private userRepository: UserRepositoryClass,
+    private userProfileRepository: UserProfileRepositoryClass,
+  ) {}
 
   async list(req: Request, res: Response) {
     try {
@@ -34,7 +38,7 @@ export class UserControllerClass {
       const filter: UserFilter = {
         email: req.query.email as string | undefined,
         phoneNum: req.query.phoneNum as string | undefined,
-        accName: req.query.accName as string | undefined,
+        username: req.query.username as string | undefined,
         status: req.query.status as string | undefined,
         roleId: req.query.roleId as string | undefined,
       };
@@ -49,12 +53,13 @@ export class UserControllerClass {
         pageSize,
       });
 
+      const profiles = await this.userProfileRepository.getByUserIds(users.map((user) => user.id));
       const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
       res.status(200).json({
         success: true,
         message: 'OK',
-        data: users.map(withProfileImage),
+        data: withUserProfiles(users, profiles),
         pagination: {
           page,
           pageSize,
@@ -72,12 +77,19 @@ export class UserControllerClass {
 
   async getById(req: Request, res: Response) {
     try {
-      const user = await this.userRepository.getUserById(paramId(req.params.id));
+      const userId = paramId(req.params.id);
+      const user = await this.userRepository.getUserById(userId);
       if (!user) {
         return res.status(404).json({ success: false, message: Error.NOT_FOUND, data: null });
       }
 
-      res.status(200).json({ success: true, message: 'OK', data: withProfileImage(user) });
+      const profile = await this.userProfileRepository.getByUserId(userId);
+
+      res.status(200).json({
+        success: true,
+        message: 'OK',
+        data: withUserProfile(user, profile),
+      });
     } catch (error) {
       logger.error('[UserController.getById] Error:', error);
       res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });
@@ -113,10 +125,12 @@ export class UserControllerClass {
         return res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });
       }
 
+      const profile = await this.userProfileRepository.getByUserId(id);
+
       res.status(200).json({
         success: true,
         message: 'Profile image updated',
-        data: withProfileImage(updatedUser),
+        data: withUserProfile(updatedUser, profile),
       });
     } catch (error) {
       logger.error('[UserController.uploadProfileImage] Error:', error);

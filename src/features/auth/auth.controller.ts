@@ -7,7 +7,9 @@ import { hashPassword } from '@/util/password.js';
 import { logger } from '@/util/logger.js';
 import { LoginSchema, RegisterSchema, ForgotPasswordSchema, ResetPasswordSchema } from '@/schema/auth.schema.js';
 import { UserRepositoryClass as UserRepository } from '@/features/user/user.repository.js';
-import { saveProfileImageFile, withProfileImage } from '@/util/profile-image.js';
+import { UserProfileRepositoryClass } from '@/features/user/user-profile/user-profile.repository.js';
+import { saveProfileImageFile } from '@/util/profile-image.js';
+import { withUserProfile } from '@/util/user-profile-image.js';
 import { z } from 'zod';
 
 export class AuthControllerClass {
@@ -15,6 +17,7 @@ export class AuthControllerClass {
     private authRepository: AuthRepositoryClass,
     private jwtController: JwtControllerClass,
     private userRepository: UserRepository,
+    private userProfileRepository: UserProfileRepositoryClass,
   ) {}
 
   async login(req: Request, res: Response) {
@@ -69,7 +72,7 @@ export class AuthControllerClass {
       const refreshToken = this.jwtController.generateRefreshToken(tokenPayload);
       const decodedToken = this.jwtController.verifyToken(accessToken);
 
-      logger.info('[AuthController.login] Login successful for user:', user.accName);
+      logger.info('[AuthController.login] Login successful for user:', user.username);
 
       return res.status(200).json({
         success: true,
@@ -119,7 +122,7 @@ export class AuthControllerClass {
         {
           email: parsedBody.email ?? null,
           phoneNum: parsedBody.phoneNum,
-          accName: parsedBody.accName,
+          username: parsedBody.username,
           passwordHash,
           status: 'active',
           profileImage: null,
@@ -138,12 +141,14 @@ export class AuthControllerClass {
         if (updatedUser) user = updatedUser;
       }
 
-      logger.info('[AuthController.register] User registered:', user.accName);
+      logger.info('[AuthController.register] User registered:', user.username);
+
+      const profile = await this.userProfileRepository.getByUserId(user.id);
 
       return res.status(201).json({
         success: true,
         message: 'User registered successfully',
-        data: withProfileImage(user),
+        data: withUserProfile(user, profile),
       });
     } catch (error) {
       if (error instanceof z.ZodError) {

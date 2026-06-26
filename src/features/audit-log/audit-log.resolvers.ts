@@ -6,7 +6,7 @@ import { PaginationParams } from '@/util/pagination';
 function transformAuditLog(auditLog: {
   auditLogId: number;
   userId: string | null;
-  userName: string | null;
+  username: string | null;
   role: string | null;
   action: string;
   entity: string;
@@ -20,7 +20,7 @@ function transformAuditLog(auditLog: {
   return {
     auditLogId: String(auditLog.auditLogId),
     userId: auditLog.userId,
-    userName: auditLog.userName,
+    username: auditLog.username,
     role: auditLog.role,
     action: auditLog.action,
     entity: auditLog.entity,

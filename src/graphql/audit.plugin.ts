@@ -1,7 +1,7 @@
 import type { ApolloServerPlugin } from '@apollo/server';
 import type { GraphQLContext } from '@/graphql/context';
 import { logger } from '@/util/logger';
-import { logGraphQLMutation } from '@/features/audit-log/audit-log.wrapper';
+import { logGraphQLMutation, getGraphqlAuditRole } from '@/features/audit-log/audit-log.wrapper';
 
 export function auditLogPlugin(): ApolloServerPlugin<GraphQLContext> {
   return {
@@ -36,6 +36,7 @@ export function auditLogPlugin(): ApolloServerPlugin<GraphQLContext> {
               requestContext.request.variables ?? undefined,
               result,
               errorMessage,
+              getGraphqlAuditRole(requestContext.contextValue),
             );
           } catch (error) {
             logger.error('[auditLogPlugin] Failed to write audit log', error);

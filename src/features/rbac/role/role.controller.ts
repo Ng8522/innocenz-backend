@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { RoleRepositoryClass } from './role.repository';
 import { RoleType } from './role.model';
 import { RoleSchema } from '@/schema/rbac.schema';
-import { paginate } from '@/util/pagination';
 import { paramId } from '@/util/params';
 import { getActor } from '@/util/actor';
 import { Error } from '@/error/index';
@@ -20,14 +19,12 @@ export class RoleControllerClass {
 
   async getRoles(req: Request, res: Response) {
     try {
-      const page = Number(req.query.page ?? 1);
-      const pageSize = Number(req.query.pageSize ?? 10);
       const roles = filterRoles(
         await this.roleRepository.getAllRoles(),
         req.query.roleName as string | undefined,
         req.query.status as string | undefined,
       );
-      res.status(200).json({ success: true, message: 'OK', ...paginate(roles, page, pageSize) });
+      res.status(200).json({ success: true, message: 'OK', data: roles });
     } catch {
       res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });
     }

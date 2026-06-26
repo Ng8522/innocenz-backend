@@ -5,9 +5,13 @@ import { DbTransaction } from '@/types/db-transaction';
 import { logger } from '@/util/logger';
 import { buildPeriodDateWhere } from '@/util/filter-date-format';
 import { UserRoleRepositoryClass } from '@/features/rbac/user-role/user-role.repository';
+import { UserProfileRepositoryClass } from '@/features/user/user-profile/user-profile.repository';
 
 export class UserRepositoryClass {
-  constructor(private userRoleRepository: UserRoleRepositoryClass) {}
+  constructor(
+    private userRoleRepository: UserRoleRepositoryClass,
+    private userProfileRepository: UserProfileRepositoryClass,
+  ) {}
 
   async createUser(
     user: Omit<UserInsertType, 'id' | 'createdAt' | 'updatedAt'>,
@@ -24,6 +28,7 @@ export class UserRepositoryClass {
           updatedAt: new Date(),
         })
         .returning();
+      await this.userProfileRepository.createEmpty(newUser.id, user.createdBy, tx);
       logger.info('[UserRepository.createUser] User successfully created:', newUser);
       return newUser;
     } catch (error) {
@@ -55,7 +60,7 @@ export class UserRepositoryClass {
 
   async getUsersPaginated(params: {
     filter?: UserFilter;
-    sort?: { field: 'email' | 'phoneNum' | 'accName' | 'createdAt' | 'updatedAt'; direction: 'asc' | 'desc' };
+    sort?: { field: 'email' | 'phoneNum' | 'username' | 'createdAt' | 'updatedAt'; direction: 'asc' | 'desc' };
     page: number;
     pageSize: number;
   }): Promise<{ users: UserType[]; totalCount: number }> {
@@ -63,27 +68,27 @@ export class UserRepositoryClass {
       const { filter, sort, page, pageSize } = params;
       const conditions: Array<SQL | undefined> = [];
 
-      if (filter?.phoneNum && filter?.accName && filter.phoneNum === filter.accName) {
+      if (filter?.phoneNum && filter?.username && filter.phoneNum === filter.username) {
         const term = `${filter.phoneNum}%`;
-        conditions.push(or(ilike(UserTable.phoneNum, term), ilike(UserTable.accName, term)));
+        conditions.push(or(ilike(UserTable.phoneNum, term), ilike(UserTable.username, term)));
       } else {
         if (filter?.phoneNum) {
           conditions.push(ilike(UserTable.phoneNum, `%${filter.phoneNum}%`));
         }
-        if (filter?.accName) {
-          conditions.push(ilike(UserTable.accName, `%${filter.accName}%`));
+        if (filter?.username) {
+          conditions.push(ilike(UserTable.username, `%${filter.username}%`));
         }
       }
 
-      if (filter?.email && filter?.accName && filter.email === filter.accName) {
+      if (filter?.email && filter?.username && filter.email === filter.username) {
         const term = `${filter.email}%`;
-        conditions.push(or(ilike(UserTable.email, term), ilike(UserTable.accName, term)));
+        conditions.push(or(ilike(UserTable.email, term), ilike(UserTable.username, term)));
       } else {
         if (filter?.email) {
           conditions.push(ilike(UserTable.email, `%${filter.email}%`));
         }
-        if (filter?.accName) {
-          conditions.push(ilike(UserTable.accName, `%${filter.accName}%`));
+        if (filter?.username) {
+          conditions.push(ilike(UserTable.username, `%${filter.username}%`));
         }
       }
 
@@ -116,7 +121,7 @@ export class UserRepositoryClass {
 
       const sortColumn = sort?.field === 'email' ? UserTable.email
         : sort?.field === 'phoneNum' ? UserTable.phoneNum
-          : sort?.field === 'accName' ? UserTable.accName
+          : sort?.field === 'username' ? UserTable.username
             : sort?.field === 'updatedAt' ? UserTable.updatedAt
               : UserTable.createdAt;
       const sortDirection = sort?.direction === 'desc' ? asc : desc;

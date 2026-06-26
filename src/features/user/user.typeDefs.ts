@@ -4,12 +4,43 @@ export const typeDefs = `#graphql
     email: String
     phoneNum: String
     profileImage: String
-    accName: String!
+    username: String!
     status: String!
     createdAt: String!
     updatedAt: String!
     createdBy: String!
     updatedBy: String!
+    profile: UserProfile!
+  }
+
+  type UserProfile {
+    id: ID
+    userId: ID!
+    firstName: String
+    lastName: String
+    nationality: String
+    idType: String
+    idNo: String
+    dob: String
+    addressLine1: String
+    addressLine2: String
+    postcode: String
+    state: String
+    country: String
+    underAgency: Boolean
+    agencyId: String
+    idPhotoFront: String
+    idPhotoBack: String
+    acceptPrivacy: Boolean
+    acceptTruth: Boolean
+    acceptAgencyShare: Boolean
+    acceptTerms: Boolean
+    verificationStatus: String
+    verifiedAt: String
+    createdAt: String
+    updatedAt: String
+    createdBy: String
+    updatedBy: String
   }
 
   type UserPaginatedResponse {
@@ -21,7 +52,7 @@ export const typeDefs = `#graphql
     id: ID
     email: String
     phoneNum: String
-    accName: String
+    username: String
     status: String
     roleId: ID
     startDate: String
@@ -31,7 +62,7 @@ export const typeDefs = `#graphql
   enum UserSortField {
     CREATED_AT
     UPDATED_AT
-    ACC_NAME
+    USERNAME
     EMAIL
     STATUS
   }
@@ -47,7 +78,7 @@ export const typeDefs = `#graphql
   }
 
   input CreateUserInput {
-    accName: String!
+    username: String!
     email: String
     phoneNum: String
     profileImage: String

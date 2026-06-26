@@ -4,6 +4,7 @@ import { GraphQLContext } from '@/graphql/context';
 import { CreateAuditLogInput, registerAuditOldDataFetcher } from './audit-log.repository';
 import {
   auditLogRepository,
+  authRepository,
   moduleRepository,
   permissionRepository,
   rolePermissionRepository,
@@ -97,7 +98,7 @@ function getGraphqlUserAgent(context: GraphQLContext): string {
   return context.req.headers['user-agent'] || 'unknown';
 }
 
-function getUserRole(context: GraphQLContext): string | null {
+export function getGraphqlAuditRole(context: GraphQLContext): string | null {
   if (context.userRoles.length === 0) {
     return null;
   }
@@ -159,7 +160,7 @@ export function withAudit<TParent, TArgs, TResult>(
               auditLogRepository.createAuditLog(
                 {
                   userId: context.user?.id ?? null,
-                  role: getUserRole(context),
+                  role: getGraphqlAuditRole(context),
                   action,
                   entity,
                   entityId: id,
@@ -180,7 +181,7 @@ export function withAudit<TParent, TArgs, TResult>(
           await auditLogRepository.createAuditLog(
             {
               userId: context.user?.id ?? null,
-              role: getUserRole(context),
+              role: getGraphqlAuditRole(context),
               action,
               entity,
               entityId,
@@ -203,7 +204,7 @@ export function withAudit<TParent, TArgs, TResult>(
           await auditLogRepository.createAuditLog(
             {
               userId: context.user?.id ?? null,
-              role: getUserRole(context),
+              role: getGraphqlAuditRole(context),
               action: `${action}_FAILED`,
               entity,
               entityId,
@@ -276,18 +277,47 @@ export function registerAllAuditOldDataFetchers(): void {
   });
 }
 
-async function getUserRoleName(req: Request): Promise<string | null> {
-  if (!req.user?.id) {
-    return null;
-  }
-
-  const roles = await userRoleRepository.getUserRoles(req.user.id);
+async function getUserRoleNameById(userId: string): Promise<string | null> {
+  const roles = await userRoleRepository.getUserRoles(userId);
   if (roles.length === 0) {
     return null;
   }
 
   const adminRole = roles.find((role) => role.roleName === 'admin');
   return adminRole?.roleName ?? roles[0]?.roleName ?? null;
+}
+
+export async function resolveAuditActor(
+  req: Request,
+  roleOverride?: string | null,
+): Promise<{ userId: string | null; role: string | null }> {
+  if (req.user?.id) {
+    return {
+      userId: req.user.id,
+      role: roleOverride !== undefined ? roleOverride : await getUserRoleNameById(req.user.id),
+    };
+  }
+
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : authHeader?.split(' ')[1];
+  if (!token) {
+    return { userId: null, role: null };
+  }
+
+  try {
+    const user = await authRepository.getUserDataByToken(token);
+    if (!user || user.status.toLowerCase() !== 'active') {
+      return { userId: null, role: null };
+    }
+
+    req.user = user;
+    return {
+      userId: user.id,
+      role: roleOverride !== undefined ? roleOverride : await getUserRoleNameById(user.id),
+    };
+  } catch {
+    return { userId: null, role: null };
+  }
 }
 
 export function redactSensitive<T>(value: T): T {
@@ -378,11 +408,17 @@ function extractNewData(responseBody: unknown): unknown {
 
 async function writeAuditLog(
   req: Request,
-  input: Omit<CreateAuditLogInput, 'ipAddress' | 'userAgent' | 'role'> & { role?: string | null },
+  input: Omit<CreateAuditLogInput, 'ipAddress' | 'userAgent' | 'role' | 'userId'> & {
+    role?: string | null;
+    userId?: string | null;
+  },
+  roleOverride?: string | null,
 ) {
+  const actor = await resolveAuditActor(req, roleOverride ?? input.role);
   await auditLogRepository.createAuditLog({
     ...input,
-    role: input.role ?? (await getUserRoleName(req)),
+    userId: input.userId ?? actor.userId,
+    role: input.role ?? actor.role,
     ipAddress: getRestIpAddress(req),
     userAgent: getRestUserAgent(req),
   });
@@ -406,7 +442,6 @@ export async function logRestMutation(
       : extractNewData(responseBody);
 
   await writeAuditLog(req, {
-    userId: req.user?.id ?? null,
     action,
     entity,
     entityId,
@@ -438,17 +473,21 @@ export async function logGraphQLMutation(
   variables?: Record<string, unknown>,
   result?: unknown,
   errorMessage?: string,
+  roleOverride?: string | null,
 ): Promise<void> {
   const action = resolveGraphqlAction(fieldName, errorMessage);
 
-  await writeAuditLog(req, {
-    userId: req.user?.id ?? null,
-    action,
-    entity: fieldName,
-    entityId: null,
-    oldData: variables,
-    newData: errorMessage ? { result, error: errorMessage } : result,
-  });
+  await writeAuditLog(
+    req,
+    {
+      action,
+      entity: fieldName,
+      entityId: null,
+      oldData: variables,
+      newData: errorMessage ? { result, error: errorMessage } : result,
+    },
+    roleOverride,
+  );
 
   req.auditLogged = true;
 }

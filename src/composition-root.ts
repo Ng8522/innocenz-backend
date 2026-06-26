@@ -12,15 +12,32 @@ import { RolePermissionRepositoryClass } from '@/features/rbac/role-permission/r
 import { RolePermissionControllerClass } from '@/features/rbac/role-permission/role-permission.controller.js';
 import { UserRepositoryClass } from '@/features/user/user.repository.js';
 import { UserControllerClass } from '@/features/user/user.controller.js';
+import { UserProfileRepositoryClass } from '@/features/user/user-profile/user-profile.repository.js';
 import { UserRoleRepositoryClass } from '@/features/rbac/user-role/user-role.repository.js';
 import { UserRoleControllerClass } from '@/features/rbac/user-role/user-role.controller.js';
 import { AuditLogRepositoryClass } from '@/features/audit-log/audit-log.repository.js';
+import { SubscriptionRepositoryClass } from '@/features/subscription/subscription.repository.js';
+import { SubscriptionRoleRepositoryClass } from '@/features/subscription/subscription-role.repository.js';
+import { SubscriptionControllerClass } from '@/features/subscription/subscription.controller.js';
+import { LimitTypeRepositoryClass } from '@/features/limit-type/limit-type.repository.js';
+import { LimitTypeControllerClass } from '@/features/limit-type/limit-type.controller.js';
+import { SubscriptionFeatureRepositoryClass } from '@/features/subscription-feature/subscription-feature.repository.js';
+import { SubscriptionFeatureControllerClass } from '@/features/subscription-feature/subscription-feature.controller.js';
+import { OutletRepositoryClass } from '@/features/outlet/outlet.repository.js';
+import { OutletMemberRepositoryClass } from '@/features/outlet/outlet-member.repository.js';
+import { OutletControllerClass } from '@/features/outlet/outlet.controller.js';
+import { AgencyRepositoryClass } from '@/features/agency/agency.repository.js';
+import { AgencyMemberRepositoryClass } from '@/features/agency/agency-member.repository.js';
+import { AgencyControllerClass } from '@/features/agency/agency.controller.js';
+import { CommissionConfigRepositoryClass } from '@/features/commission/commission-config.repository.js';
+import { CommissionConfigControllerClass } from '@/features/commission/commission-config.controller.js';
 
 export const jwtController = new JwtControllerClass();
 export const userRoleRepository = new UserRoleRepositoryClass();
-export const userRepository = new UserRepositoryClass(userRoleRepository);
+export const userProfileRepository = new UserProfileRepositoryClass();
+export const userRepository = new UserRepositoryClass(userRoleRepository, userProfileRepository);
 export const authRepository = new AuthRepositoryClass(jwtController, userRepository, userRoleRepository);
-export const authController = new AuthControllerClass(authRepository, jwtController, userRepository);
+export const authController = new AuthControllerClass(authRepository, jwtController, userRepository, userProfileRepository);
 export const healthController = new HealthControllerClass();
 
 export const roleRepository = new RoleRepositoryClass();
@@ -35,6 +52,27 @@ export const permissionController = new PermissionControllerClass(permissionRepo
 export const rolePermissionRepository = new RolePermissionRepositoryClass();
 export const rolePermissionController = new RolePermissionControllerClass(rolePermissionRepository);
 
-export const userController = new UserControllerClass(userRepository);
+export const userController = new UserControllerClass(userRepository, userProfileRepository);
 export const userRoleController = new UserRoleControllerClass(userRoleRepository);
 export const auditLogRepository = new AuditLogRepositoryClass();
+
+export const subscriptionRepository = new SubscriptionRepositoryClass();
+export const subscriptionRoleRepository = new SubscriptionRoleRepositoryClass();
+export const subscriptionController = new SubscriptionControllerClass(subscriptionRepository, subscriptionRoleRepository);
+
+export const limitTypeRepository = new LimitTypeRepositoryClass();
+export const limitTypeController = new LimitTypeControllerClass(limitTypeRepository);
+
+export const subscriptionFeatureRepository = new SubscriptionFeatureRepositoryClass();
+export const subscriptionFeatureController = new SubscriptionFeatureControllerClass(subscriptionFeatureRepository);
+
+export const agencyRepository = new AgencyRepositoryClass();
+export const agencyMemberRepository = new AgencyMemberRepositoryClass();
+export const agencyController = new AgencyControllerClass(agencyRepository, agencyMemberRepository);
+
+export const outletRepository = new OutletRepositoryClass();
+export const outletMemberRepository = new OutletMemberRepositoryClass();
+export const outletController = new OutletControllerClass(outletRepository, outletMemberRepository);
+
+export const commissionConfigRepository = new CommissionConfigRepositoryClass();
+export const commissionConfigController = new CommissionConfigControllerClass(commissionConfigRepository);

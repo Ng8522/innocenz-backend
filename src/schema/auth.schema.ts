@@ -19,7 +19,7 @@ const ResetPasswordSchema = z.object({
 const RegisterSchema = z.object({
     email: z.email('Invalid email format').optional(),
     phoneNum: z.string(),
-    accName: z.string().min(1, 'Account name is required'),
+    username: z.string().min(1, 'Username is required'),
     password: z.string().min(6, 'Password must be at least 6 characters long').optional(),
     roleId: z.string().min(1, 'Role is required'),
 });

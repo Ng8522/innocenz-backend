@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/index';
 import { UserTable } from '@/features/user/user.model';
+import { UserProfileTable } from '@/features/user/user-profile/user-profile.model';
 import { RoleTable } from '@/features/rbac/role/role.model';
 import { UserRoleTable } from '@/features/rbac/user-role/user-role.model';
 import { hashPassword } from '@/util/password';
@@ -71,6 +72,19 @@ export async function initAdmin(): Promise<void> {
       logger.info(`Default admin profile image set: ${DEFAULT_ADMIN_EMAIL}`);
     }
 
+    const [existingProfile] = await db
+      .select({ id: UserProfileTable.id })
+      .from(UserProfileTable)
+      .where(eq(UserProfileTable.userId, existingUser.id))
+      .limit(1);
+    if (!existingProfile) {
+      await db.insert(UserProfileTable).values({
+        userId: existingUser.id,
+        createdBy: ACTOR,
+        updatedBy: ACTOR,
+      });
+    }
+
     logger.info(`Default admin ready: ${DEFAULT_ADMIN_EMAIL}`);
     return;
   }
@@ -88,7 +102,7 @@ export async function initAdmin(): Promise<void> {
     .insert(UserTable)
     .values({
       email: DEFAULT_ADMIN_EMAIL,
-      accName: DEFAULT_ADMIN_NAME,
+      username: DEFAULT_ADMIN_NAME,
       passwordHash,
       profileImage: DEFAULT_PROFILE_IMAGE,
       status: 'active',
@@ -98,6 +112,7 @@ export async function initAdmin(): Promise<void> {
     .returning();
 
   await ensureAdminRoleForUser(user.id, adminRoleId);
+  await db.insert(UserProfileTable).values({ userId: user.id, createdBy: ACTOR, updatedBy: ACTOR });
   logger.info(`Default admin user created: ${DEFAULT_ADMIN_EMAIL}`);
 }
 

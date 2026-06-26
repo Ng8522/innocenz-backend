@@ -37,7 +37,7 @@ export type CreateAuditLogInput = {
 export type AuditLogListItem = {
   auditLogId: number;
   userId: string | null;
-  userName: string | null;
+  username: string | null;
   role: string | null;
   action: string;
   entity: string;
@@ -95,7 +95,7 @@ export class AuditLogRepositoryClass {
       } else if (sortField === 'ENTITY') {
         orderByClause = sortDirection(AuditLogTable.entity);
       } else if (sortField === 'USER_NAME') {
-        orderByClause = sortDirection(UserTable.accName);
+        orderByClause = sortDirection(UserTable.username);
       } else {
         orderByClause = desc(AuditLogTable.createdAt);
       }
@@ -124,7 +124,7 @@ export class AuditLogRepositoryClass {
           ipAddress: AuditLogTable.ipAddress,
           userAgent: AuditLogTable.userAgent,
           createdAt: AuditLogTable.createdAt,
-          userName: UserTable.accName,
+          username: UserTable.username,
         })
         .from(AuditLogTable)
         .leftJoin(UserTable, eq(AuditLogTable.userId, UserTable.id))

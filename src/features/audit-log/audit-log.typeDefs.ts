@@ -2,7 +2,7 @@ export const typeDefs = `#graphql
   type AuditLog {
     auditLogId: ID!
     userId: ID
-    userName: String
+    username: String
     role: String
     action: String!
     entity: String!

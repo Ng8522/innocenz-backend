@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { PermissionRepositoryClass } from './permission.repository';
 import { PermissionType } from './permission.model';
 import { PermissionSchema } from '@/schema/rbac.schema';
-import { paginate } from '@/util/pagination';
 import { paramId } from '@/util/params';
 import { getActor } from '@/util/actor';
 import { Error } from '@/error/index';
@@ -24,14 +23,12 @@ export class PermissionControllerClass {
 
   async getPermissions(req: Request, res: Response) {
     try {
-      const page = Number(req.query.page ?? 1);
-      const pageSize = Number(req.query.pageSize ?? 10);
       const permissions = filterPermissions(
         await this.permissionRepository.getAllPermissions(),
         req.query.moduleId as string | undefined,
         req.query.status as string | undefined,
       );
-      res.status(200).json({ success: true, message: 'Successfully fetched permissions data', ...paginate(permissions, page, pageSize) });
+      res.status(200).json({ success: true, message: 'Successfully fetched permissions data', data: permissions });
     } catch {
       res.status(500).json({ success: false, message: Error.INTERNAL_SERVER_ERROR, data: null });
     }
