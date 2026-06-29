@@ -1,7 +1,7 @@
 import { MainSchema } from "@/db/db.schema";
 import { decimal, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 
-export const billingCycleValues = ['monthly', 'annually'] as const;
+export const billingCycleValues = ['weekly', 'monthly', 'annually'] as const;
 export type BillingCycle = (typeof billingCycleValues)[number];
 export const billingCycleEnum = MainSchema.enum('billing_cycle', billingCycleValues);
 

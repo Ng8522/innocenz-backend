@@ -57,6 +57,13 @@
       "when": 1782467411433,
       "tag": "0007_foamy_ultimates",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782708624406,
+      "tag": "0008_adorable_mongoose",
+      "breakpoints": true
     }
   ]
 }
